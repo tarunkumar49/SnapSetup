@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
+import FeedbackModal from './FeedbackModal';
 import './Footer.css';
 
 function Footer() {
   const { project, systemChecks, runningServers, runningProcessId, setRunningProcessId, setRunningServers } = useProject();
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const handleOpenFrontend = () => {
     if (!runningServers.frontend) return;
@@ -15,8 +17,11 @@ function Footer() {
   };
 
   const handleOpenBackend = () => {
-    if (runningServers.backend) {
+    if (!runningServers.backend) return;
+    if (window.electronAPI?.openExternal) {
       window.electronAPI.openExternal(runningServers.backend);
+    } else {
+      window.open(runningServers.backend, '_blank');
     }
   };
 
@@ -63,19 +68,26 @@ function Footer() {
       </div>
 
       <div className="footer-right">
-        <div className="footer-item">
-          <span className="label">Backend:</span>
-          <span className={`value ${runningServers.backend ? 'running' : ''}`}>
-            {runningServers.backend || 'Stopped'}
-          </span>
-        </div>
+        {runningServers.backend && (
+          <div className="footer-item">
+            <div className="clickable" onClick={handleOpenBackend}>
+              <span className="label">Backend:</span>
+              <span className="value link">{runningServers.backend}</span>
+            </div>
+          </div>
+        )}
         <div className="footer-item">
           <span className="label">Docker:</span>
           <span className={`value ${systemChecks.docker ? 'available' : ''}`}>
             {systemChecks.docker === null ? 'Checking...' : systemChecks.docker ? 'Available' : 'Not available'}
           </span>
         </div>
+        <button className="feedback-btn" onClick={() => setShowFeedback(true)} title="Send Feedback">
+          💬 Feedback
+        </button>
       </div>
+      
+      <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
     </div>
   );
 }

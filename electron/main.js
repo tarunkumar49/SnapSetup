@@ -12,6 +12,9 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    frame: false,
+    titleBarStyle: 'hidden',
+    icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -126,25 +129,44 @@ ipcMain.handle('check-command', (event, cmd) => {
 ipcMain.handle('run-command', (event, command, args = [], cwd = process.cwd(), id = null) => {
   return new Promise((resolve) => {
     try {
-      const child = spawn(command, args, { cwd, shell: true });
+      // Execute command through shell
+      const child = spawn(command, [], { 
+        cwd, 
+        shell: true,
+        windowsHide: true
+      });
 
       // store child temporarily if id provided
       const cmdId = id || `${Date.now()}`;
       runningCommands.set(cmdId, child);
 
-      child.stdout.on('data', (data) => {
-        event.sender.send('command-output', { id: cmdId, data: data.toString(), type: 'stdout' });
-      });
+      if (child.stdout) {
+        child.stdout.on('data', (data) => {
+          const output = data.toString();
+          console.log('STDOUT:', output);
+          if (event.sender && !event.sender.isDestroyed()) {
+            event.sender.send('command-output', { id: cmdId, data: output, type: 'stdout' });
+          }
+        });
+      }
 
-      child.stderr.on('data', (data) => {
-        event.sender.send('command-output', { id: cmdId, data: data.toString(), type: 'stderr' });
-      });
+      if (child.stderr) {
+        child.stderr.on('data', (data) => {
+          const output = data.toString();
+          console.log('STDERR:', output);
+          if (event.sender && !event.sender.isDestroyed()) {
+            event.sender.send('command-output', { id: cmdId, data: output, type: 'stderr' });
+          }
+        });
+      }
 
       child.on('error', (err) => {
+        console.log('ERROR:', err.message);
         event.sender.send('command-error', { id: cmdId, error: err.message });
       });
 
       child.on('close', (code) => {
+        console.log('CLOSE:', code);
         event.sender.send('command-complete', { id: cmdId, code });
         runningCommands.delete(cmdId);
         resolve({ success: true, code });
@@ -250,6 +272,53 @@ ipcMain.handle('get-user-data-path', () => {
   } catch (err) {
     return null;
   }
+});
+
+// Get user home directory
+ipcMain.handle('get-home-dir', () => {
+  try {
+    return app.getPath('home');
+  } catch (err) {
+    return null;
+  }
+});
+
+// Get username
+ipcMain.handle('get-username', () => {
+  try {
+    return process.env.USERNAME || process.env.USER || 'user';
+  } catch (err) {
+    return 'user';
+  }
+});
+
+// Window controls
+ipcMain.handle('minimize-window', () => {
+  if (mainWindow) {
+    mainWindow.minimize();
+    return { success: true };
+  }
+  return { success: false };
+});
+
+ipcMain.handle('maximize-window', () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+    return { success: true };
+  }
+  return { success: false };
+});
+
+ipcMain.handle('close-window', () => {
+  if (mainWindow) {
+    mainWindow.close();
+    return { success: true };
+  }
+  return { success: false };
 });
 
 // Run a command in a new system terminal window

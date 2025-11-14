@@ -1,0 +1,61 @@
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon svg {
+  transition: transform 0.2s ease;
+}
+
+.logo-container:hover .logo-icon svg {
+  transform: scale(1.05);
+}
+
+.logo-layer-1 {
+  color: var(--accent-primary, #007acc);
+  stroke: var(--accent-primary, #007acc);
+}
+
+.logo-layer-2 {
+  color: var(--accent-secondary, #00d4aa);
+  stroke: var(--accent-secondary, #00d4aa);
+}
+
+.logo-layer-3 {
+  color: var(--text-accent, #ff6b6b);
+  stroke: var(--text-accent, #ff6b6b);
+}
+
+.logo-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* Large logo variant */
+.logo-large {
+  gap: 16px;
+}
+
+.logo-large .logo-text {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Small logo variant */
+.logo-small {
+  gap: 8px;
+}
+
+.logo-small .logo-text {
+  font-size: 12px;
+}

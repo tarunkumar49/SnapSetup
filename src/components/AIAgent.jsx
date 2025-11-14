@@ -41,7 +41,7 @@ function AIAgent() {
     if (project && analysis && messages.length === 0) {
       addAgentMessage(
         `Hey — I analyzed your project. I detected ${analysis.type} with ${analysis.stack.join(', ')}. ` +
-        `I found ${dependencies.length} dependencies. Would you like me to start the auto setup?`,
+        `I found ${dependencies.length} dependencies. Click "Start Auto Setup" to begin installation.`,
         'greeting'
       );
     }
@@ -51,10 +51,10 @@ function AIAgent() {
     return (
       <div className="ai-agent-panel">
         <div className="ai-agent-header">
-          <div className="ai-agent-title">🤖 AI Agent (Disabled)</div>
+          <div className="ai-agent-title">⚡ Snap - AI (Disabled)</div>
         </div>
         <div className="ai-agent-content">
-          <p>The AI agent is disabled in Settings. Enable it to access setup automation and chat features.</p>
+          <p>Snap - AI is disabled in Settings. Enable it to access setup automation and chat features.</p>
         </div>
       </div>
     );
@@ -127,7 +127,8 @@ function AIAgent() {
       }
       
       // Start setup
-      addAgentMessage(`Installing dependencies... This may take a few minutes.`, 'info');
+      addAgentMessage(`Installing ${dependencies.length} dependencies... This may take a few minutes.`, 'info');
+      addLog({ type: 'info', message: `Starting installation of ${dependencies.length} dependencies` });
       await setupManager.current.runFullSetup();
       
       addAgentMessage('Setup completed successfully! 🎉', 'success');
@@ -187,28 +188,21 @@ function AIAgent() {
     setInputValue('');
     setIsProcessing(true);
 
-    // Send to local proxy which forwards to Google AI endpoint.
-    // Make sure the proxy is running: npm run start-proxy (or start it another way).
     fetch('http://localhost:3000/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: messageToSend }),
     })
       .then(async (res) => {
-        if (!res.ok) {
-          const errBody = await res.text();
-          throw new Error(`Proxy error: ${res.status} ${errBody}`);
-        }
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
         return res.json();
       })
       .then((data) => {
-        // data.body may contain the provider response depending on the proxy configuration
-        const replyText = (data && data.body && (data.body.outputText || JSON.stringify(data.body))) || 'Received response from AI.';
+        const replyText = data?.body?.outputText || data?.reply || 'Response received';
         addAgentMessage(replyText, 'info');
       })
       .catch((err) => {
-        console.error('AI request failed', err);
-        addAgentMessage(`AI request failed: ${err.message}`, 'error');
+        addAgentMessage('AI proxy not running. Start it with: npm run start-proxy', 'error');
       })
       .finally(() => setIsProcessing(false));
   };
@@ -251,10 +245,13 @@ function AIAgent() {
           <h4>Actions</h4>
           <button
             onClick={handleStartSetup}
-            disabled={isProcessing || setupStatus === 'installing'}
+            disabled={isProcessing || setupStatus === 'installing' || setupStatus === 'running'}
             className="action-button primary"
           >
-            {setupStatus === 'installing' ? 'Installing...' : 'Start Auto Setup'}
+            {setupStatus === 'installing' && 'Installing...'}
+            {setupStatus === 'running' && 'Running...'}
+            {(setupStatus === 'idle' || setupStatus === 'completed') && 'Start Auto Setup'}
+            {setupStatus === 'error' && 'Retry Setup'}
           </button>
           
           <button
@@ -348,21 +345,18 @@ function AIAgent() {
   };
 
   return (
-    <div className="ai-agent-panel">
+    <div className="ai-agent">
       <div className="ai-agent-header">
-        <div className="ai-agent-title">
-          <span className="icon">🤖</span>
-          <span>AI Agent</span>
-        </div>
+        <div className="section-title">SNAP - AI</div>
         <div className="mode-toggle">
           <button
-            className={mode === 'actions' ? 'active' : ''}
+            className={`mode-btn ${mode === 'actions' ? 'active' : ''}`}
             onClick={() => setMode('actions')}
           >
             Actions
           </button>
           <button
-            className={mode === 'chat' ? 'active' : ''}
+            className={`mode-btn ${mode === 'chat' ? 'active' : ''}`}
             onClick={() => setMode('chat')}
           >
             Chat

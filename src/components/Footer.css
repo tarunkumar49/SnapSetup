@@ -32,11 +32,14 @@
   gap: 6px;
 }
 
-.footer-item.clickable {
+.clickable {
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.footer-item.clickable:hover .link {
+.clickable:hover .link {
   text-decoration: underline;
 }
 

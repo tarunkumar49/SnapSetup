@@ -22,4 +22,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onCommandComplete: (cb) => ipcRenderer.on('command-complete', (e, data) => cb(data)),
   onCommandError: (cb) => ipcRenderer.on('command-error', (e, data) => cb(data)),
   removeListener: (channel) => ipcRenderer.removeAllListeners(channel),
+  getHomeDir: () => ipcRenderer.invoke('get-home-dir'),
+  getUsername: () => ipcRenderer.invoke('get-username'),
+  // Window controls
+  minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
+  maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
+  closeWindow: () => ipcRenderer.invoke('close-window'),
 });

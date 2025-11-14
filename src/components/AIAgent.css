@@ -1,49 +1,51 @@
-.ai-agent-panel {
+.ai-agent {
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-primary);
+  background-color: var(--bg-secondary);
   overflow: hidden;
+  height: 100%;
 }
 
 .ai-agent-header {
-  height: 40px;
+  height: 35px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
+  padding: 0 16px;
   flex-shrink: 0;
 }
 
-.ai-agent-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+.section-title {
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
 }
 
 .mode-toggle {
   display: flex;
-  gap: 4px;
-  background-color: var(--bg-tertiary);
-  border-radius: 4px;
-  padding: 2px;
+  gap: 2px;
 }
 
-.mode-toggle button {
-  padding: 4px 12px;
+.mode-btn {
+  padding: 4px 8px;
   font-size: 11px;
   background: transparent;
   border: none;
   border-radius: 3px;
   color: var(--text-secondary);
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.mode-toggle button.active {
+.mode-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.mode-btn.active {
   background-color: var(--accent-primary);
   color: white;
 }

@@ -1,44 +1,54 @@
 {
   "name": "snapsetup",
   "version": "1.0.0",
-  "description": "SnapSetup — desktop app for automated project setup",
+  "description": "AI-powered JavaScript codebase setup automation",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
-    "dev:renderer": "vite",
-    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "dev": "vite",
     "build": "vite build",
-    "build:electron": "electron-builder",
-    "start": "electron .",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:electron": "npm run build && electron-builder",
+    "start": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "start-proxy": "node src/googleAIProxy.js"
   },
-  "keywords": [
-    "electron",
-    "react",
-    "ai",
-    "codebase",
-    "setup"
-  ],
-  "author": "",
-  "license": "MIT",
+  "build": {
+    "appId": "com.snapsetup.app",
+    "productName": "SnapSetup",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "icon": "assets/icon.png"
+    }
+  },
   "dependencies": {
-    "@google/genai": "^1.27.0",
-    "chokidar": "^3.5.3",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
+    "chokidar": "^4.0.3",
+    "concurrently": "^9.2.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "file-saver": "^2.0.5",
-    "js-yaml": "^4.1.0"
+    "mermaid": "^11.12.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "wait-on": "^9.0.3"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "concurrently": "^8.2.2",
-    "electron": "^28.1.0",
-    "electron-builder": "^24.9.1",
-    "lucide-react": "^0.303.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "vite": "^5.0.8",
-    "wait-on": "^7.2.0"
+    "@vitejs/plugin-react": "^5.1.1",
+    "electron": "^39.2.0",
+    "electron-builder": "^26.0.12",
+    "vite": "^7.2.2"
   }
 }
