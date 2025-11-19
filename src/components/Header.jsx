@@ -25,7 +25,7 @@ function Header() {
   };
 
   const handleHelp = () => {
-    const url = 'https://github.com/yourusername/snapsetup#readme';
+    const url = 'https://snapsetuplandingpage.vercel.app';
     if (window.electronAPI?.openExternal) {
       window.electronAPI.openExternal(url);
     } else {

@@ -6,15 +6,20 @@ import Terminal from './components/Terminal';
 import AIAgent from './components/AIAgent';
 import EditorArea from './components/EditorArea';
 import Toast from './components/Toast';
+import FeedbackModal from './components/FeedbackModal';
 import { ProjectProvider, useProject } from './context/ProjectContext';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import './App.css';
 
 function AppContent() {
+  const { setupStatus } = useProject();
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [aiAgentWidth, setAiAgentWidth] = useState(350);
   const [terminalHeight, setTerminalHeight] = useState(250);
+  const [terminalWidth, setTerminalWidth] = useState(window.innerWidth - 200);
   const [isElectron, setIsElectron] = useState(false);
+  const [activeResize, setActiveResize] = useState(null);
+  const [showFeedback, setShowFeedback] = useState(false);
   
   useFileWatcher();
 
@@ -23,21 +28,31 @@ function AppContent() {
     setIsElectron(!!window.electronAPI);
   }, []);
 
+  useEffect(() => {
+    if (setupStatus === 'completed') {
+      const hasShownFeedback = localStorage.getItem('feedbackShown');
+      if (!hasShownFeedback) {
+        setTimeout(() => {
+          setShowFeedback(true);
+          localStorage.setItem('feedbackShown', 'true');
+        }, 2000);
+      }
+    }
+  }, [setupStatus]);
+
   const handleSidebarResize = (e) => {
     e.preventDefault();
+    setActiveResize('sidebar');
     const startX = e.clientX;
     const startWidth = sidebarWidth;
     const onMouseMove = (e) => {
       const newWidth = startWidth + (e.clientX - startX);
-      if (newWidth < 50) {
-        setSidebarWidth(0);
-      } else if (newWidth >= 150 && newWidth <= 500) {
+      if (newWidth >= 150 && newWidth <= 500) {
         setSidebarWidth(newWidth);
-      } else if (newWidth >= 50 && newWidth < 150) {
-        setSidebarWidth(150);
       }
     };
     const onMouseUp = () => {
+      setActiveResize(null);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
@@ -47,19 +62,17 @@ function AppContent() {
 
   const handleAiAgentResize = (e) => {
     e.preventDefault();
+    setActiveResize('ai');
     const startX = e.clientX;
     const startWidth = aiAgentWidth;
     const onMouseMove = (e) => {
       const newWidth = startWidth - (e.clientX - startX);
-      if (newWidth < 50) {
-        setAiAgentWidth(0);
-      } else if (newWidth >= 250 && newWidth <= 600) {
+      if (newWidth >= 250 && newWidth <= 600) {
         setAiAgentWidth(newWidth);
-      } else if (newWidth >= 50 && newWidth < 250) {
-        setAiAgentWidth(250);
       }
     };
     const onMouseUp = () => {
+      setActiveResize(null);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
@@ -69,16 +82,33 @@ function AppContent() {
 
   const handleTerminalResize = (e) => {
     e.preventDefault();
+    setActiveResize('terminal');
     const startY = e.clientY;
     const startHeight = terminalHeight;
     const onMouseMove = (e) => {
       const newHeight = startHeight - (e.clientY - startY);
-      if (newHeight < 50) {
-        setTerminalHeight(0);
-      } else if (newHeight >= 100 && newHeight <= 600) {
+      if (newHeight >= 100 && newHeight <= 600) {
         setTerminalHeight(newHeight);
-      } else if (newHeight >= 50 && newHeight < 100) {
-        setTerminalHeight(100);
+      }
+    };
+    const onMouseUp = () => {
+      setActiveResize(null);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const handleTerminalWidthResize = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = terminalWidth;
+    const onMouseMove = (e) => {
+      const newWidth = startWidth + (e.clientX - startX);
+      const maxWidth = window.innerWidth - aiAgentWidth - 50;
+      if (newWidth >= 300 && newWidth <= maxWidth) {
+        setTerminalWidth(newWidth);
       }
     };
     const onMouseUp = () => {
@@ -92,50 +122,36 @@ function AppContent() {
   return (
     <div className="vscode-app">
       <Header />
-      <div className="vscode-body">
-        {sidebarWidth === 0 ? (
-          <div className="resize-handle resize-handle-edge-left" onMouseDown={(e) => {
-            e.preventDefault();
-            setSidebarWidth(250);
-          }} />
-        ) : (
-          <div style={{ width: sidebarWidth, position: 'relative' }}>
-            <Sidebar />
-            <div className="resize-handle resize-handle-right" onMouseDown={handleSidebarResize} />
-          </div>
-        )}
-        <div className="vscode-main">
-          <EditorArea />
-          {aiAgentWidth === 0 ? (
-            <div className="resize-handle resize-handle-edge-right" onMouseDown={(e) => {
-              e.preventDefault();
-              setAiAgentWidth(350);
-            }} />
-          ) : (
-            <div style={{ width: aiAgentWidth, position: 'relative' }}>
-              <div className="resize-handle resize-handle-left" onMouseDown={handleAiAgentResize} />
-              <AIAgent />
+      <div className={`vscode-body ${activeResize ? `resizing-${activeResize}` : ''}`}>
+        <div className="grid-left-section">
+          <div className="grid-top-section">
+            <div className="grid-sidebar" style={{ width: sidebarWidth }}>
+              <Sidebar />
+              <div className={`resize-handle resize-handle-right ${activeResize === 'sidebar' ? 'active' : ''}`} onMouseDown={handleSidebarResize} />
             </div>
-          )}
+            <div className="grid-editor">
+              <EditorArea />
+              <div className={`resize-handle resize-handle-bottom ${activeResize === 'terminal' ? 'active' : ''}`} onMouseDown={handleTerminalResize} />
+            </div>
+          </div>
+          <div className="grid-terminal" style={{ height: terminalHeight }}>
+            <Terminal />
+          </div>
         </div>
-      </div>
-      {terminalHeight === 0 ? (
-        <div className="resize-handle resize-handle-edge-bottom" onMouseDown={(e) => {
-          e.preventDefault();
-          setTerminalHeight(250);
-        }} />
-      ) : (
-        <div style={{ height: terminalHeight, position: 'relative' }}>
-          <div className="resize-handle resize-handle-top" onMouseDown={handleTerminalResize} />
-          <Terminal />
+        <div className="grid-right-section" style={{ width: aiAgentWidth }}>
+          <div className={`resize-handle resize-handle-left ${activeResize === 'ai' ? 'active' : ''}`} onMouseDown={handleAiAgentResize} />
+          <div className="grid-chat">
+            <AIAgent mode="chat" />
+          </div>
+          <div className="grid-actions" style={{ height: terminalHeight }}>
+            <div className={`resize-handle resize-handle-top resize-handle-sync ${activeResize === 'terminal' ? 'active' : ''}`} onMouseDown={handleTerminalResize} />
+            <AIAgent mode="actions" />
+          </div>
         </div>
-      )}
-      <div className="app-footer">
-        <span>SnapSetup v1.0.0</span>
-        <span>AI-Powered JavaScript Setup Automation</span>
       </div>
       <Toast />
       <Settings />
+      <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
     </div>
   );
 }

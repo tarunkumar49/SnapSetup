@@ -135,7 +135,12 @@
 .mermaid-diagram {
   display: flex;
   justify-content: center;
+  align-items: center;
   min-height: 300px;
+}
+
+.mermaid-diagram svg {
+  margin: 0 auto;
 }
 
 .workflow-details {

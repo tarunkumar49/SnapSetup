@@ -4,7 +4,7 @@ import SetupManager from '../utils/SetupManager';
 import HybridAIAgent from '../utils/HybridAIAgent';
 import './AIAgent.css';
 
-function AIAgent() {
+function AIAgent({ mode: propMode }) {
   const projectContext = useProject();
   const {
     project,
@@ -21,7 +21,7 @@ function AIAgent() {
   } = projectContext;
   const { settings } = projectContext;
 
-  const [mode, setMode] = useState('actions'); // 'actions' or 'chat'
+  const mode = propMode || 'actions';
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -87,16 +87,40 @@ function AIAgent() {
   };
 
   const addAgentMessage = (text, type = 'info') => {
+    const messageId = `${Date.now()}-${Math.random()}`;
     setMessages((prev) => [
       ...prev,
       {
-        id: `${Date.now()}-${Math.random()}`,
+        id: messageId,
         sender: 'agent',
-        text,
+        text: '',
+        fullText: text,
         type,
         timestamp: new Date().toISOString(),
+        isTyping: true,
       },
     ]);
+
+    // Typing animation
+    let currentIndex = 0;
+    const typingSpeed = 50; // milliseconds per character
+    const typingInterval = setInterval(() => {
+      currentIndex++;
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId
+            ? {
+                ...msg,
+                text: text.substring(0, currentIndex),
+                isTyping: currentIndex < text.length,
+              }
+            : msg
+        )
+      );
+      if (currentIndex >= text.length) {
+        clearInterval(typingInterval);
+      }
+    }, typingSpeed);
   };
 
   const addUserMessage = (text) => {
@@ -371,23 +395,7 @@ function AIAgent() {
           )}
         </div>
 
-        {llmStatus && (
-          <div className="action-section">
-            <h4>AI Status</h4>
-            <div className="status-item">
-              <span className="status-label">{llmStatus.provider} AI:</span>
-              <span className={`status-badge ${llmStatus.available ? 'running' : 'idle'}`}>
-                {llmStatus.available ? '✅ Active' : '⚪ Not Configured'}
-              </span>
-            </div>
-            {llmStatus.available && (
-              <div className="status-item">
-                <span className="status-label">Model:</span>
-                <span className="status-value">{llmStatus.model}</span>
-              </div>
-            )}
-          </div>
-        )}
+
 
         {dependencies.length > 0 && (
           <div className="action-section">
@@ -426,7 +434,7 @@ function AIAgent() {
               className={`chat-message ${msg.sender} ${msg.type || ''}`}
             >
               <div className="message-content">
-                <div className="message-text">{msg.text}</div>
+                <div className={`message-text ${msg.isTyping ? 'typing' : ''}`}>{msg.text}</div>
                 <div className="message-time">
                   {new Date(msg.timestamp).toLocaleTimeString()}
                 </div>
@@ -454,21 +462,7 @@ function AIAgent() {
   return (
     <div className="ai-agent">
       <div className="ai-agent-header">
-        <div className="section-title">SNAP - AI</div>
-        <div className="mode-toggle">
-          <button
-            className={`mode-btn ${mode === 'actions' ? 'active' : ''}`}
-            onClick={() => setMode('actions')}
-          >
-            Actions
-          </button>
-          <button
-            className={`mode-btn ${mode === 'chat' ? 'active' : ''}`}
-            onClick={() => setMode('chat')}
-          >
-            Chat
-          </button>
-        </div>
+        <div className="section-title">{mode === 'chat' ? 'CHAT' : 'ACTIONS'}</div>
       </div>
       <div className="ai-agent-content">
         {mode === 'actions' ? renderActions() : renderChat()}

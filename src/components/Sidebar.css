@@ -132,8 +132,8 @@
   gap: 6px;
   border-radius: 3px;
   cursor: pointer;
-  font-size: 12px;
-  height: 22px;
+  font-size: 11px;
+  height: 20px;
 }
 
 .file-tree-row:hover {
@@ -167,7 +167,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .folder-contents {
@@ -182,7 +182,7 @@
 
 .no-project p {
   margin-bottom: 16px;
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .open-folder-btn {
@@ -245,7 +245,7 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .info-label {

@@ -7,33 +7,95 @@
 
 .vscode-body {
   flex: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   overflow: hidden;
   min-height: 0;
 }
 
-.vscode-main {
-  flex: 1;
-  display: flex;
+.grid-left-section {
+  display: grid;
+  grid-template-rows: 1fr auto;
   overflow: hidden;
-  min-height: 0;
 }
 
-.vscode-main > .editor-area {
-  flex: 1;
-  min-width: 0;
+.grid-top-section {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  overflow: hidden;
+}
+
+.grid-sidebar {
+  position: relative;
+  border-right: 1px solid var(--border-color);
   overflow: auto;
 }
 
-.vscode-main > div {
+.grid-editor {
+  position: relative;
+  overflow: auto;
+}
+
+.grid-terminal {
+  position: relative;
+  overflow: auto;
+  border-top: 1px solid var(--border-color);
+}
+
+.grid-right-section {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  overflow: hidden;
   border-left: 1px solid var(--border-color);
-  flex-shrink: 0;
-  height: 100%;
 }
 
-.ai-agent {
+.grid-chat {
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.grid-actions {
+  position: relative;
+  overflow: hidden;
+}
+
+.resizing-sidebar .grid-sidebar {
+  border-right-color: #ff6b35;
+}
+
+.resizing-ai .grid-right-section {
+  border-left-color: #ff6b35;
+}
+
+.resizing-terminal .grid-editor {
+  border-bottom-color: #ff6b35;
+}
+
+.resizing-terminal .grid-terminal {
+  border-top-color: #ff6b35;
+}
+
+.resizing-terminal .grid-chat {
+  border-bottom-color: #ff6b35;
+}
+
+.actions-panel {
+  padding: 12px;
   height: 100%;
   overflow: auto;
+}
+
+.actions-panel h3 {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.actions-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .resize-handle {
@@ -66,52 +128,41 @@
   cursor: ns-resize;
 }
 
-.resize-handle:hover {
-  background: var(--accent-primary);
-}
-
-.resize-handle-edge-left {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--border-color);
-  cursor: ew-resize;
-  z-index: 10;
-}
-
-.resize-handle-edge-right {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--border-color);
-  cursor: ew-resize;
-  z-index: 10;
-}
-
-.resize-handle-edge-bottom {
-  position: absolute;
+.resize-handle-bottom {
   bottom: 0;
   left: 0;
   right: 0;
   height: 4px;
-  background: var(--border-color);
   cursor: ns-resize;
-  z-index: 10;
 }
 
-.app-footer {
-  height: 22px;
-  background-color: var(--bg-primary);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  flex-shrink: 0;
+.resize-handle:hover {
+  background: #ff6b35;
 }
+
+.resize-handle.active {
+  background: #ff6b35;
+}
+
+.grid-sidebar:has(.resize-handle-right:hover) {
+  border-right-color: #ff6b35;
+}
+
+.grid-right-section:has(.resize-handle-left:hover) {
+  border-left-color: #ff6b35;
+}
+
+.grid-editor:has(.resize-handle-bottom:hover) {
+  border-bottom-color: #ff6b35;
+}
+
+.grid-terminal:has(~ .grid-right-section .resize-handle-top:hover),
+.grid-chat:has(+ .grid-actions .resize-handle-top:hover) {
+  border-bottom-color: #ff6b35;
+}
+
+.grid-actions:has(.resize-handle-top:hover) ~ .grid-terminal,
+.grid-editor:has(.resize-handle-bottom:hover) + .grid-terminal {
+  border-top-color: #ff6b35;
+}
+

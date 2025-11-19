@@ -136,12 +136,14 @@
 .terminal-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
   padding: 8px 12px;
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.4;
   background-color: #000000;
   color: #cccccc;
+  min-height: 0;
 }
 
 
@@ -149,16 +151,19 @@
 .terminal-lines {
   display: flex;
   flex-direction: column;
+  min-height: min-content;
 }
 
 .terminal-line {
   margin-bottom: 1px;
+  min-height: 18px;
 }
 
 .terminal-line .output-text {
   color: #cccccc;
   white-space: pre-wrap;
-  word-break: break-word;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .terminal-line.error .output-text {

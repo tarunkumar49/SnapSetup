@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useProject } from '../context/ProjectContext';
+import ProjectGraph from './ProjectGraph';
 import './EditorArea.css';
 
 function EditorArea() {
@@ -20,7 +21,7 @@ function EditorArea() {
   };
 
   const handleViewDocs = () => {
-    const url = 'https://github.com/yourusername/snapsetup#readme';
+    const url = 'https://snapsetuplandingpage.vercel.app';
     if (window.electronAPI?.openExternal) {
       window.electronAPI.openExternal(url);
     } else {
@@ -201,7 +202,7 @@ ${type} -> "${stack}"
         </div>
         
         <div className="mermaid-container">
-          <div className="mermaid-diagram" dangerouslySetInnerHTML={{ __html: diagramSvg }}></div>
+          <ProjectGraph project={project} analysis={analysis} />
         </div>
         
         {analysis && (
