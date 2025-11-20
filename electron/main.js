@@ -9,6 +9,10 @@ const watchers = new Map();
 const runningCommands = new Map();
 
 function createWindow() {
+  const preloadPath = path.join(__dirname, 'preload.js');
+  console.log('Preload script path:', preloadPath);
+  console.log('Preload script exists:', fs.existsSync(preloadPath));
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -18,23 +22,47 @@ function createWindow() {
     backgroundColor: '#1e1e1e',
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
     },
   });
 
-  const devUrl = 'http://localhost:5173';
-
-  // If dev server is available, load it; otherwise load built index.html
-  mainWindow.loadURL(devUrl).catch(() => {
+  // Check if we're in development or production
+  const isDev = !app.isPackaged;
+  
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:5173').catch(() => {
+      const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
+      mainWindow.loadFile(indexPath);
+    });
+  } else {
     const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
     mainWindow.loadFile(indexPath);
-  });
+  }
 
   // Show window when ready to prevent flashing
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+  });
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription);
+  });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('Window finished loading');
+  });
+
+  // Set CSP for production
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ["default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data:;"]
+      }
+    });
   });
 
   mainWindow.on('closed', () => {

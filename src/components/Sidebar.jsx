@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
 import BackendPanel from './BackendPanel';
 import BackendRunner from '../utils/BackendRunner';
+import SystemDependencyChecker from '../utils/SystemDependencyChecker';
 import './Sidebar.css';
 
 function BackendSection() {
@@ -68,11 +69,15 @@ function BackendSection() {
 }
 
 function Sidebar() {
-  const { project, projectPath, analysis, showToast, setSettingsOpen, loadProject } = useProject();
+  const projectContext = useProject();
+  const { project, projectPath, analysis, showToast, setSettingsOpen, loadProject } = projectContext;
   const [files, setFiles] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [activeSection, setActiveSection] = useState('explorer');
   const [availableEditors, setAvailableEditors] = useState([]);
+  const [systemDeps, setSystemDeps] = useState(null);
+  const [checkingDeps, setCheckingDeps] = useState(false);
+  const [installingDep, setInstallingDep] = useState(null);
 
   useEffect(() => {
     if (projectPath) {
@@ -87,6 +92,28 @@ function Sidebar() {
       });
     }
   }, []);
+
+  const checkSystemDependencies = async () => {
+    setCheckingDeps(true);
+    const checker = new SystemDependencyChecker(projectContext);
+    const result = await checker.checkAll();
+    setSystemDeps(result);
+    setCheckingDeps(false);
+    
+    if (result.missing.length > 0) {
+      showToast(`${result.missing.length} system dependencies missing`, 'warning');
+    } else {
+      showToast('All system dependencies installed', 'success');
+    }
+  };
+
+  const handleInstallDependency = async (depName) => {
+    setInstallingDep(depName);
+    const checker = new SystemDependencyChecker(projectContext);
+    await checker.autoInstall(depName);
+    setInstallingDep(null);
+    await checkSystemDependencies();
+  };
 
   const handleOpenInEditor = async (editor) => {
     if (!projectPath) {
@@ -399,6 +426,43 @@ function Sidebar() {
                 <span className="setting-label">Preferences</span>
               </div>
               
+              <button onClick={checkSystemDependencies} disabled={checkingDeps} className="check-deps-btn">
+                {checkingDeps ? 'Checking...' : '🔍 Check System Dependencies'}
+              </button>
+              
+              {systemDeps && (
+                <div className="system-deps">
+                  {systemDeps.missing.length === 0 ? (
+                    <div className="deps-ok">✅ All dependencies installed</div>
+                  ) : (
+                    <div className="deps-missing">
+                      <div className="deps-title">⚠️ Missing Dependencies:</div>
+                      {systemDeps.missing.map(dep => (
+                        <div key={dep.name} className="dep-item">
+                          <span className="dep-name">{dep.name}</span>
+                          {dep.canAutoInstall ? (
+                            <button 
+                              onClick={() => handleInstallDependency(dep.name)}
+                              disabled={installingDep === dep.name}
+                              className="install-btn"
+                            >
+                              {installingDep === dep.name ? 'Installing...' : 'Install'}
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => window.electronAPI.openExternal(dep.installUrl)}
+                              className="manual-btn"
+                            >
+                              Download
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {analysis && (
                 <div className="project-info">
                   <h4>Project Info</h4>

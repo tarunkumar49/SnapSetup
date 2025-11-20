@@ -56,9 +56,6 @@ class AgentExecutor {
 
       const completeHandler = (data) => {
         if (data.id === id) {
-          window.electronAPI.removeListener('command-output', outputHandler);
-          window.electronAPI.removeListener('command-complete', completeHandler);
-          
           if (data.code === 0) {
             resolve({ success: true, output });
           } else {
@@ -67,8 +64,8 @@ class AgentExecutor {
         }
       };
 
-      window.electronAPI.on('command-output', outputHandler);
-      window.electronAPI.on('command-complete', completeHandler);
+      window.electronAPI.onCommandOutput(outputHandler);
+      window.electronAPI.onCommandComplete(completeHandler);
 
       window.electronAPI.spawnCommand(cmd, args, cwd, id).catch(reject);
     });

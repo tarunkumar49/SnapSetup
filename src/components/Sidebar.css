@@ -333,3 +333,97 @@
   font-size: 13px;
   cursor: pointer;
 }
+
+.check-deps-btn {
+  width: 100%;
+  padding: 10px;
+  margin: 12px 16px;
+  width: calc(100% - 32px);
+  background: #0096ff;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check-deps-btn:hover:not(:disabled) {
+  background: #0080dd;
+}
+
+.check-deps-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.system-deps {
+  margin: 12px 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.deps-ok {
+  color: #10b981;
+  text-align: center;
+  padding: 8px;
+}
+
+.deps-missing {
+  color: #f59e0b;
+}
+
+.deps-title {
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.dep-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  margin-bottom: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.dep-name {
+  color: #fff;
+  font-size: 11px;
+}
+
+.install-btn,
+.manual-btn {
+  padding: 4px 12px;
+  font-size: 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.install-btn {
+  background: #10b981;
+  color: #fff;
+}
+
+.install-btn:hover:not(:disabled) {
+  background: #059669;
+}
+
+.install-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.manual-btn {
+  background: #f59e0b;
+  color: #000;
+}
+
+.manual-btn:hover {
+  background: #d97706;
+}

@@ -9,14 +9,15 @@ class RuleEngine {
     const lowerQuery = query.toLowerCase();
     
     const patterns = {
-      install: /install|dependencies|npm|packages|setup/i,
+      install: /install|dependencies|npm|packages|setup|pip|requirements/i,
       start: /start|run|launch|serve|begin/i,
       stop: /stop|kill|terminate|end/i,
       status: /status|progress|what.*happening|how.*going/i,
-      error: /error|fail|broken|issue|problem|fix|debug/i,
+      error: /error|fail|broken|issue|problem|fix|debug|modulenotfound|importerror/i,
       configure: /config|setup|change|modify|settings/i,
       docker: /docker|container|compose/i,
       env: /env|environment|variable/i,
+      python: /python|django|flask|fastapi|pip|virtualenv|venv/i,
       help: /help|how|what.*do|guide/i,
     };
 
@@ -49,6 +50,8 @@ class RuleEngine {
           return this.handleDocker(context);
         case 'env':
           return this.handleEnv(context);
+        case 'python':
+          return this.handlePython(context, query);
         case 'help':
           return this.handleHelp(context);
         default:
@@ -231,6 +234,33 @@ class RuleEngine {
           confidence: 0.7,
         }),
       },
+      {
+        pattern: /ModuleNotFoundError: No module named ['"](.+)['"]/i,
+        diagnose: (match) => ({
+          issue: `Python module not found: ${match[1]}`,
+          solution: `The Python module "${match[1]}" is not installed. Installing it automatically...`,
+          actions: [{ type: 'auto_fix', command: `pip install ${match[1]}` }],
+          confidence: 0.95,
+        }),
+      },
+      {
+        pattern: /pip.*not found|'pip' is not recognized/i,
+        diagnose: () => ({
+          issue: 'pip is not installed',
+          solution: 'Python package manager (pip) is not found. Install it with: python -m ensurepip --upgrade',
+          actions: [{ type: 'auto_fix', command: 'python -m ensurepip --upgrade' }],
+          confidence: 1.0,
+        }),
+      },
+      {
+        pattern: /python.*not found|'python' is not recognized/i,
+        diagnose: () => ({
+          issue: 'Python is not installed',
+          solution: 'Python is not installed on your system. Download it from https://www.python.org/downloads/',
+          actions: [{ type: 'open_url', url: 'https://www.python.org/downloads/' }],
+          confidence: 1.0,
+        }),
+      },
     ];
 
     for (const { pattern, diagnose } of errorPatterns) {
@@ -317,16 +347,61 @@ class RuleEngine {
     };
   }
 
+  handlePython(context, query) {
+    const help = [
+      "🐍 Python Project Support:",
+      "",
+      "I can automatically:",
+      "✅ Detect missing Python modules",
+      "✅ Install packages from requirements.txt",
+      "✅ Fix ModuleNotFoundError automatically",
+      "✅ Handle pip, pipenv, and poetry",
+      "✅ Show installation progress in real-time",
+      "✅ Auto-fix common Python errors",
+      "",
+      "Supported libraries (30+):",
+      "• Web: Django, Flask, FastAPI",
+      "• Data: NumPy, Pandas, Matplotlib",
+      "• ML: TensorFlow, PyTorch, Scikit-learn",
+      "• Database: SQLAlchemy, PyMongo, psycopg2",
+      "• HTTP: Requests, httpx, BeautifulSoup",
+      "",
+      "Just upload your Python project and I'll handle the rest!"
+    ];
+
+    return {
+      message: help.join('\n'),
+      actions: [],
+      confidence: 1.0,
+    };
+  }
+
   handleHelp(context) {
     const help = [
       "I can help you with:",
-      "• 'install dependencies' - Install all project dependencies",
+      "",
+      "🚀 Setup & Installation:",
+      "• 'install dependencies' - Auto-install for any language",
       "• 'start server' - Start development servers",
       "• 'check status' - See current project status",
-      "• 'fix errors' - Diagnose and fix common errors",
-      "• 'generate docker-compose' - Create Docker configuration",
-      "• 'create .env file' - Set up environment variables",
-      "\nJust ask me in natural language!"
+      "",
+      "🔧 Error Handling (50+ patterns):",
+      "• 'fix errors' - Auto-diagnose and fix",
+      "• Network timeouts → Auto-retry",
+      "• Port conflicts → Auto-kill process",
+      "• Missing modules → Auto-install",
+      "• Cache issues → Auto-clean",
+      "",
+      "🌐 Supported Languages:",
+      "• Node.js, Python, Java, Go, Rust",
+      "• PHP, Ruby, Elixir",
+      "",
+      "💡 Smart Features:",
+      "• 'python' - Python-specific help",
+      "• 'generate docker-compose' - Docker setup",
+      "• 'create .env file' - Environment config",
+      "",
+      "Just ask me in natural language!"
     ];
 
     return {

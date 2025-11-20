@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+console.log('Preload script loaded');
+
 contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
@@ -33,3 +35,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   detectEditors: () => ipcRenderer.invoke('detect-editors'),
   openInEditor: (editorCmd, projectPath) => ipcRenderer.invoke('open-in-editor', editorCmd, projectPath),
 });
+
+console.log('electronAPI exposed to window:', typeof window !== 'undefined' ? !!window.electronAPI : 'window not available');

@@ -1,7 +1,64 @@
+import { PythonErrorHandler } from './PythonErrorHandler.js';
+import { UniversalErrorHandler } from './UniversalErrorHandler.js';
+import { EdgeCaseHandler } from './EdgeCaseHandler.js';
+
 class MultiLanguageSetupManager {
   constructor(projectPath, context) {
     this.projectPath = projectPath;
     this.context = context;
+    this.pythonErrorHandler = new PythonErrorHandler(context);
+    this.universalErrorHandler = new UniversalErrorHandler(context);
+    this.edgeCaseHandler = new EdgeCaseHandler(context);
+    this.currentLanguage = null;
+    this.terminalOutput = '';
+    this.setupListeners();
+  }
+
+  setupListeners() {
+    if (window.electronAPI) {
+      window.electronAPI.onCommandOutput((data) => {
+        this.terminalOutput += data.data;
+        // Check for errors in real-time
+        if (data.type === 'stderr' && this.terminalOutput.includes('Error')) {
+          this.handleTerminalError(data.data);
+        }
+      });
+    }
+  }
+
+  async handleTerminalError(errorOutput) {
+    // Check edge cases first
+    const edgeCase = await this.edgeCaseHandler.handle(errorOutput, this.projectPath);
+    if (edgeCase) {
+      if (edgeCase.success && edgeCase.command) {
+        await this.executeFixCommand(edgeCase.command, edgeCase.message);
+      }
+      return edgeCase;
+    }
+
+    // Try language-specific handler
+    if (this.currentLanguage) {
+      const result = await this.universalErrorHandler.handleError(
+        errorOutput,
+        this.currentLanguage,
+        this.projectPath
+      );
+      
+      if (result.success && result.command) {
+        await this.executeFixCommand(result.command, result.message);
+      }
+      return result;
+    }
+
+    return { success: false, message: 'No handler available' };
+  }
+
+  async executeFixCommand(command, message) {
+    this.context?.addLog({ type: 'info', message: `⚡ Auto-fixing: ${message}` });
+    const [cmd, ...args] = command.split(' ');
+    const fixId = `auto-fix-${Date.now()}`;
+    await window.electronAPI.spawnCommand(cmd, args, this.projectPath, fixId);
+    await new Promise(resolve => setTimeout(resolve, 3000));
   }
 
   async detectLanguage() {
@@ -21,7 +78,10 @@ class MultiLanguageSetupManager {
 
     for (const check of checks) {
       const exists = await window.electronAPI.fileExists(`${this.projectPath}/${check.file}`);
-      if (exists) return check;
+      if (exists) {
+        this.currentLanguage = check.lang;
+        return check;
+      }
     }
     return null;
   }
@@ -164,6 +224,29 @@ class MultiLanguageSetupManager {
 
   async setupPython(manager) {
     this.context?.setSetupStatus('installing');
+    this.pythonErrorHandler.reset();
+    
+    // Parse requirements to show progress
+    let packages = [];
+    if (manager === 'pip') {
+      try {
+        const reqFile = await window.electronAPI.readFile(`${this.projectPath}/requirements.txt`);
+        if (reqFile.success) {
+          packages = reqFile.content
+            .split('\n')
+            .filter(line => line.trim() && !line.startsWith('#'))
+            .map(line => line.split('==')[0].split('>=')[0].split('<=')[0].trim());
+          
+          this.context?.addLog({ 
+            type: 'info', 
+            message: `📦 Found ${packages.length} packages to install` 
+          });
+        }
+      } catch (err) {
+        console.error('Error reading requirements:', err);
+      }
+    }
+
     this.context?.addLog({ type: 'info', message: `📦 Installing Python dependencies with ${manager}...` });
 
     const commands = {
@@ -174,13 +257,57 @@ class MultiLanguageSetupManager {
 
     const [cmd, args] = commands[manager];
     const installId = `${manager}-install-${Date.now()}`;
-    await window.electronAPI.spawnCommand(cmd, args, this.projectPath, installId);
+    
+    let installedCount = 0;
+    const outputHandler = (data) => {
+      if (data.id === installId) {
+        // Track installation progress
+        if (data.data.includes('Successfully installed') || data.data.includes('Requirement already satisfied')) {
+          installedCount++;
+          const progress = packages.length > 0 ? Math.round((installedCount / packages.length) * 100) : 0;
+          this.context?.addLog({ 
+            type: 'info', 
+            message: `⏳ Progress: ${installedCount}/${packages.length} packages (${progress}%)` 
+          });
+        }
+        
+        // Check for errors
+        if (data.type === 'stderr' && (data.data.includes('ERROR') || data.data.includes('Error'))) {
+          this.handleTerminalError(data.data);
+        }
+      }
+    };
 
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    window.electronAPI.onCommandOutput(outputHandler);
+    
+    try {
+      await window.electronAPI.spawnCommand(cmd, args, this.projectPath, installId);
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
-    this.context?.addLog({ type: 'success', message: '✅ Python dependencies installed' });
-    this.context?.setSetupStatus('completed');
-    return { success: true };
+      this.context?.addLog({ type: 'success', message: '✅ Python dependencies installed' });
+      this.context?.setSetupStatus('completed');
+      return { success: true };
+    } catch (error) {
+      // Try to auto-fix the error
+      const fixResult = await this.pythonErrorHandler.handleError(error.message, this.projectPath);
+      
+      if (fixResult.success && fixResult.command) {
+        this.context?.addLog({ type: 'warning', message: `🔧 Attempting auto-fix...` });
+        const [fixCmd, ...fixArgs] = fixResult.command.split(' ');
+        await window.electronAPI.spawnCommand(fixCmd, fixArgs, this.projectPath, `fix-${Date.now()}`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Retry original command
+        await window.electronAPI.spawnCommand(cmd, args, this.projectPath, `retry-${Date.now()}`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        this.context?.addLog({ type: 'success', message: '✅ Python dependencies installed after auto-fix' });
+        this.context?.setSetupStatus('completed');
+        return { success: true };
+      }
+      
+      throw error;
+    }
   }
 
   async setupJava(manager) {

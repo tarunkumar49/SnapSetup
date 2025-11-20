@@ -26,7 +26,7 @@ class BackendRunner {
         }
       };
       
-      window.electronAPI.on('command-output', outputHandler);
+      window.electronAPI.onCommandOutput(outputHandler);
       
       await window.electronAPI.spawnCommand(cmd, args, this.projectPath, this.processId);
       

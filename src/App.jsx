@@ -10,6 +10,7 @@ import FeedbackModal from './components/FeedbackModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectProvider, useProject } from './context/ProjectContext';
 import { useFileWatcher } from './hooks/useFileWatcher';
+import { checkElectronAPI } from './utils/electronAPICheck';
 import './App.css';
 
 function AppContent() {

@@ -29,8 +29,6 @@ function AIAgent({ mode: propMode }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [llmStatus, setLlmStatus] = useState(null);
   const [missingRuntime, setMissingRuntime] = useState(null);
-  const [useAutonomous, setUseAutonomous] = useState(false);
-  const [memoryStats, setMemoryStats] = useState(null);
   const messagesEndRef = useRef(null);
   const setupManager = useRef(null);
   const hybridAgent = useRef(null);
@@ -49,7 +47,6 @@ function AIAgent({ mode: propMode }) {
     }
     if (!autonomousAgent.current) {
       autonomousAgent.current = new AdvancedAutonomousAgent(projectContext);
-      setMemoryStats(autonomousAgent.current.getMemoryStats());
     }
   }, [projectPath, projectContext, settings]);
 
@@ -151,8 +148,8 @@ function AIAgent({ mode: propMode }) {
     addLog({ type: 'info', message: 'Starting automated setup process' });
     
     try {
-      // Use autonomous agent if enabled
-      if (useAutonomous && autonomousAgent.current && analysis) {
+      // Use autonomous agent
+      if (autonomousAgent.current && analysis) {
         addAgentMessage('🤖 Using autonomous AI agent...', 'info');
         const stats = autonomousAgent.current.getMemoryStats();
         if (stats.totalProjects > 0) {
@@ -461,41 +458,7 @@ function AIAgent({ mode: propMode }) {
         <div className="action-section">
           <h4>Actions</h4>
           
-          <label className="autonomous-toggle">
-            <input
-              type="checkbox"
-              checked={useAutonomous}
-              onChange={(e) => setUseAutonomous(e.target.checked)}
-            />
-            <span>🤖 Use Autonomous Agent (learns from mistakes)</span>
-          </label>
 
-          {useAutonomous && memoryStats && (
-            <div className="memory-stats">
-              <div className="stat-item">
-                <span>💾 Learned from:</span>
-                <span>{memoryStats.successfulProjects}/{memoryStats.totalProjects} projects</span>
-              </div>
-              <div className="stat-item">
-                <span>💡 Known solutions:</span>
-                <span>{memoryStats.knownSolutions}</span>
-              </div>
-              {memoryStats.totalProjects > 0 && (
-                <button
-                  onClick={() => {
-                    if (autonomousAgent.current) {
-                      autonomousAgent.current.clearMemory();
-                      setMemoryStats(autonomousAgent.current.getMemoryStats());
-                      showToast('Agent memory cleared', 'info');
-                    }
-                  }}
-                  className="clear-memory-btn"
-                >
-                  Clear Memory
-                </button>
-              )}
-            </div>
-          )}
 
           <button
             onClick={handleStartSetup}
@@ -504,7 +467,7 @@ function AIAgent({ mode: propMode }) {
           >
             {setupStatus === 'installing' && 'Installing...'}
             {setupStatus === 'running' && 'Running...'}
-            {(setupStatus === 'idle' || setupStatus === 'completed') && (useAutonomous ? '🤖 Start Autonomous Setup' : 'Start Auto Setup')}
+            {(setupStatus === 'idle' || setupStatus === 'completed') && '🤖 Start Auto Setup'}
             {setupStatus === 'error' && 'Retry Setup'}
           </button>
           
