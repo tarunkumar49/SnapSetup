@@ -123,10 +123,11 @@ class MultiLanguageSetupManager {
       console.error('Error checking Docker files:', err);
     }
 
-    // Fallback to language-specific setup
+    // Try language-specific setup
     const detected = await this.detectLanguage();
     if (!detected) {
-      throw new Error('Could not detect project language');
+      // No config files found - check for static HTML/CSS/JS
+      return await this.setupStaticProject();
     }
 
     this.context?.addLog({ type: 'info', message: `Detected ${detected.lang} project using ${detected.manager}` });
@@ -447,6 +448,42 @@ class MultiLanguageSetupManager {
     this.context?.addLog({ type: 'success', message: '✅ Elixir dependencies installed' });
     this.context?.setSetupStatus('completed');
     return { success: true };
+  }
+
+  async setupStaticProject() {
+    this.context?.addLog({ type: 'info', message: '🌐 Detected static HTML/CSS/JS project' });
+    
+    // Check for index.html
+    const hasIndex = await window.electronAPI.fileExists(`${this.projectPath}/index.html`);
+    
+    if (!hasIndex) {
+      this.context?.addLog({ type: 'warning', message: 'ℹ️ No index.html found. This appears to be a simple file collection.' });
+      this.context?.addLog({ type: 'info', message: '💡 Tip: Add an index.html file to serve this as a website' });
+      this.context?.setSetupStatus('completed');
+      return { success: true, mode: 'static-no-server' };
+    }
+
+    // Check if npx is available (comes with Node.js)
+    const npxCheck = await window.electronAPI.checkCommand('npx');
+    if (!npxCheck?.exists) {
+      this.context?.addLog({ type: 'warning', message: 'Node.js not found. Install Node.js to run a live server.' });
+      this.context?.addLog({ type: 'info', message: '💡 You can still open index.html directly in a browser' });
+      this.context?.setSetupStatus('completed');
+      return { success: true, mode: 'static-no-server' };
+    }
+
+    // Start live server using npx
+    this.context?.setSetupStatus('installing');
+    this.context?.addLog({ type: 'info', message: '🚀 Starting live server...' });
+    
+    const serverId = `live-server-${Date.now()}`;
+    await window.electronAPI.spawnCommand('npx', ['live-server', '--port=8080', '--no-browser'], this.projectPath, serverId);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    this.context?.addLog({ type: 'success', message: '✅ Live server started on http://localhost:8080' });
+    this.context?.setRunningServers({ frontend: 'http://localhost:8080' });
+    this.context?.setSetupStatus('completed');
+    return { success: true, mode: 'static' };
   }
 
   async setupWithDocker(hasCompose) {
