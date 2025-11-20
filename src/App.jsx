@@ -7,6 +7,7 @@ import AIAgent from './components/AIAgent';
 import EditorArea from './components/EditorArea';
 import Toast from './components/Toast';
 import FeedbackModal from './components/FeedbackModal';
+import ErrorBoundary from './components/ErrorBoundary';
 import { ProjectProvider, useProject } from './context/ProjectContext';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import './App.css';
@@ -158,9 +159,11 @@ function AppContent() {
 
 function App() {
   return (
-    <ProjectProvider>
-      <AppContent />
-    </ProjectProvider>
+    <ErrorBoundary>
+      <ProjectProvider>
+        <AppContent />
+      </ProjectProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -1,0 +1,155 @@
+.backend-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e1e1e;
+  color: #fff;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.backend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #333;
+}
+
+.backend-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+}
+
+.backend-status {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.backend-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.backend-controls button {
+  padding: 6px 12px;
+  background: #2563eb;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.backend-controls button:hover {
+  background: #1d4ed8;
+}
+
+.backend-controls button:disabled {
+  background: #374151;
+  cursor: not-allowed;
+}
+
+.backend-details {
+  margin-bottom: 16px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: 13px;
+}
+
+.detail-row code {
+  background: #2a2a2a;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.open-browser-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: #10b981;
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.backend-logs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.logs-header h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.logs-header button {
+  padding: 4px 8px;
+  background: #374151;
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.logs-content {
+  flex: 1;
+  overflow-y: auto;
+  background: #0d0d0d;
+  border-radius: 4px;
+  padding: 8px;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+}
+
+.no-logs {
+  color: #6b7280;
+  text-align: center;
+  padding: 20px;
+}
+
+.log-entry {
+  padding: 4px 0;
+  display: flex;
+  gap: 8px;
+}
+
+.log-time {
+  color: #6b7280;
+  min-width: 80px;
+}
+
+.log-message {
+  flex: 1;
+  word-break: break-word;
+}
+
+.log-entry.error .log-message {
+  color: #ef4444;
+}
+
+.log-entry.success .log-message {
+  color: #10b981;
+}
+
+.log-entry.warning .log-message {
+  color: #f59e0b;
+}

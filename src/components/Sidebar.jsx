@@ -1,6 +1,71 @@
+
 import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
+import BackendPanel from './BackendPanel';
+import BackendRunner from '../utils/BackendRunner';
 import './Sidebar.css';
+
+function BackendSection() {
+  const { backends, activeBackend, setActiveBackend, backendRunner, setBackendRunner, projectPath } = useProject();
+  const projectContext = useProject();
+
+  useEffect(() => {
+    if (backends.length > 0 && !activeBackend) {
+      setActiveBackend(backends[0]);
+    }
+  }, [backends, activeBackend, setActiveBackend]);
+
+  useEffect(() => {
+    if (activeBackend && projectPath) {
+      const runner = new BackendRunner(activeBackend, projectPath, projectContext);
+      setBackendRunner(runner);
+    }
+    
+    return () => {
+      if (backendRunner) {
+        backendRunner.stop().catch(() => {});
+      }
+    };
+  }, [activeBackend, projectPath]);
+
+  if (backends.length === 0) {
+    return (
+      <div className="no-backend">
+        <p>No backend detected</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="backend-section">
+      {backends.length > 1 && (
+        <div className="backend-selector">
+          <label>Select Backend:</label>
+          <select 
+            value={backends.indexOf(activeBackend)} 
+            onChange={(e) => {
+              const newBackend = backends[parseInt(e.target.value)];
+              if (backendRunner) {
+                backendRunner.stop().catch(() => {});
+              }
+              setActiveBackend(newBackend);
+            }}
+          >
+            {backends.map((backend, i) => (
+              <option key={i} value={i}>
+                {backend.framework}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      
+      {activeBackend && backendRunner && (
+        <BackendPanel backend={activeBackend} runner={backendRunner} />
+      )}
+    </div>
+  );
+}
 
 function Sidebar() {
   const { project, projectPath, analysis, showToast, setSettingsOpen, loadProject } = useProject();
@@ -185,6 +250,15 @@ function Sidebar() {
         </div>
         <div className="activity-spacer"></div>
         <div 
+          className={`activity-item ${activeSection === 'backend' ? 'active' : ''}`}
+          onClick={() => setActiveSection('backend')}
+          title="Backend"
+        >
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h12v2H2v-2z"/>
+          </svg>
+        </div>
+        <div 
           className={`activity-item ${activeSection === 'settings' ? 'active' : ''}`}
           onClick={() => setActiveSection('settings')}
         >
@@ -299,6 +373,16 @@ function Sidebar() {
           </>
         )}
 
+        {activeSection === 'backend' && (
+          <>
+            <div className="section-header">
+              <span className="section-title">BACKEND</span>
+            </div>
+            
+            <BackendSection />
+          </>
+        )}
+
         {activeSection === 'settings' && (
           <>
             <div className="section-header">
@@ -318,6 +402,18 @@ function Sidebar() {
               {analysis && (
                 <div className="project-info">
                   <h4>Project Info</h4>
+                  {analysis.language && (
+                    <>
+                      <div className="info-item">
+                        <span className="info-label">Language:</span>
+                        <span className="info-value">{analysis.language}</span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Manager:</span>
+                        <span className="info-value">{analysis.manager}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="info-item">
                     <span className="info-label">Type:</span>
                     <span className="info-value">{analysis.type}</span>

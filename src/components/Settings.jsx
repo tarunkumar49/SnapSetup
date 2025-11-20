@@ -57,49 +57,9 @@ function Settings() {
             AI Agent enabled:
             <input
               type="checkbox"
-              checked={!!local.aiAgentEnabled}
+              checked={local.aiAgentEnabled !== false}
               onChange={(e) => setLocal({ ...local, aiAgentEnabled: e.target.checked })}
             />
-          </label>
-
-          <label>
-            AI API Key (for code analysis & modifications):
-            <input
-              type="password"
-              placeholder="Enter your API key"
-              value={local.aiApiKey || ''}
-              onChange={(e) => setLocal({ ...local, aiApiKey: e.target.value })}
-            />
-          </label>
-
-          <label>
-            AI Model:
-            <select value={local.aiModel || 'gpt-4'} onChange={(e) => setLocal({ ...local, aiModel: e.target.value })}>
-              <option value="gpt-4">GPT-4</option>
-              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-              <option value="claude-3">Claude 3</option>
-              <option value="gemini-pro">Gemini Pro</option>
-            </select>
-          </label>
-
-          <label>
-            AI API Key (for code analysis & modifications):
-            <input
-              type="password"
-              placeholder="Enter your API key"
-              value={local.aiApiKey || ''}
-              onChange={(e) => setLocal({ ...local, aiApiKey: e.target.value })}
-            />
-          </label>
-
-          <label>
-            AI Model:
-            <select value={local.aiModel || 'gpt-4'} onChange={(e) => setLocal({ ...local, aiModel: e.target.value })}>
-              <option value="gpt-4">GPT-4</option>
-              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-              <option value="claude-3">Claude 3</option>
-              <option value="gemini-pro">Gemini Pro</option>
-            </select>
           </label>
         </div>
 

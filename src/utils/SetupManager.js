@@ -19,7 +19,13 @@ class SetupManager {
       }
 
       // Step 2: Detect project structure
-      const projectStructure = await this.detectProjectStructure();
+      let projectStructure;
+      try {
+        projectStructure = await this.detectProjectStructure();
+      } catch (err) {
+        console.error('Error detecting project structure:', err);
+        projectStructure = { isFullstack: false, hasBackend: false, hasFrontend: false };
+      }
       
       // Step 3: Check .env files
       await this.checkEnvFile();
@@ -75,12 +81,13 @@ class SetupManager {
       database: null,
     };
 
-    // Read main package.json
-    const pkgResult = await window.electronAPI.readFile(`${this.projectPath}/package.json`);
-    if (!pkgResult.success) return structure;
+    try {
+      // Read main package.json
+      const pkgResult = await window.electronAPI.readFile(`${this.projectPath}/package.json`);
+      if (!pkgResult.success) return structure;
 
-    const packageJson = JSON.parse(pkgResult.content);
-    const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+      const packageJson = JSON.parse(pkgResult.content);
+      const deps = { ...packageJson.dependencies, ...packageJson.devDependencies } || {};
 
     // Detect backend
     if (deps.express) structure.backendFramework = 'Express';
@@ -104,11 +111,11 @@ class SetupManager {
     structure.hasDatabase = !!structure.database;
     structure.isFullstack = structure.hasBackend && structure.hasFrontend;
 
-    // Check for monorepo structure
-    const clientExists = await window.electronAPI.fileExists(`${this.projectPath}/client/package.json`);
-    const serverExists = await window.electronAPI.fileExists(`${this.projectPath}/server/package.json`);
-    const frontendExists = await window.electronAPI.fileExists(`${this.projectPath}/frontend/package.json`);
-    const backendExists = await window.electronAPI.fileExists(`${this.projectPath}/backend/package.json`);
+      // Check for monorepo structure
+      const clientExists = await window.electronAPI.fileExists(`${this.projectPath}/client/package.json`);
+      const serverExists = await window.electronAPI.fileExists(`${this.projectPath}/server/package.json`);
+      const frontendExists = await window.electronAPI.fileExists(`${this.projectPath}/frontend/package.json`);
+      const backendExists = await window.electronAPI.fileExists(`${this.projectPath}/backend/package.json`);
 
     if (clientExists || frontendExists) {
       structure.isMonorepo = true;
@@ -120,10 +127,13 @@ class SetupManager {
       structure.backendPath = serverExists ? `${this.projectPath}/server` : `${this.projectPath}/backend`;
     }
 
-    // If not monorepo but fullstack, both are in root
-    if (structure.isFullstack && !structure.isMonorepo) {
-      structure.backendPath = this.projectPath;
-      structure.frontendPath = this.projectPath;
+      // If not monorepo but fullstack, both are in root
+      if (structure.isFullstack && !structure.isMonorepo) {
+        structure.backendPath = this.projectPath;
+        structure.frontendPath = this.projectPath;
+      }
+    } catch (err) {
+      console.error('Error in detectProjectStructure:', err);
     }
 
     return structure;
@@ -174,12 +184,21 @@ class SetupManager {
       this.context.addLog({ type: 'info', message: '📦 Installing backend dependencies...' });
     }
 
-    // Install dependencies
+    // Install dependencies and wait for completion
     const installId = `backend-install-${Date.now()}`;
     await window.electronAPI.spawnCommand('npm', ['install'], backendPath, installId);
     
-    // Wait for installation to complete
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Wait for node_modules to be created
+    let retries = 0;
+    while (retries < 30) {
+      const nodeModulesExists = await window.electronAPI.fileExists(`${backendPath}/node_modules`);
+      if (nodeModulesExists) break;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      retries++;
+    }
+    
+    // Additional wait to ensure installation completes
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     if (this.context) {
       this.context.addLog({ type: 'success', message: '✅ Backend dependencies installed' });
@@ -219,12 +238,21 @@ class SetupManager {
       this.context.addLog({ type: 'info', message: '📦 Installing frontend dependencies...' });
     }
 
-    // Install dependencies
+    // Install dependencies and wait for completion
     const installId = `frontend-install-${Date.now()}`;
     await window.electronAPI.spawnCommand('npm', ['install'], frontendPath, installId);
     
-    // Wait for installation to complete
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Wait for node_modules to be created
+    let retries = 0;
+    while (retries < 30) {
+      const nodeModulesExists = await window.electronAPI.fileExists(`${frontendPath}/node_modules`);
+      if (nodeModulesExists) break;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      retries++;
+    }
+    
+    // Additional wait to ensure installation completes
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     if (this.context) {
       this.context.addLog({ type: 'success', message: '✅ Frontend dependencies installed' });
@@ -356,13 +384,6 @@ class SetupManager {
         );
         return { created: true, fromExample: true };
       }
-    } else if (!envExists && !envExampleExists) {
-      // Create minimal .env
-      await window.electronAPI.writeFile(
-        `${this.projectPath}/.env`,
-        '# Environment variables\n# Add your configuration here\n'
-      );
-      return { created: true, fromExample: false };
     }
 
     return { created: false };
@@ -403,12 +424,21 @@ class SetupManager {
     // Always use npm install for better compatibility
     const command = 'install';
     
-    // Run with app's terminal
+    // Run with app's terminal and wait for completion
     const installId = `npm-${command}-${Date.now()}`;
-    await window.electronAPI.spawnCommand('npm', [command], this.projectPath, installId);
+    const installResult = await window.electronAPI.spawnCommand('npm', [command], this.projectPath, installId);
     
-    // Wait for installation to complete (approximate)
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    // Wait for node_modules to be created
+    let retries = 0;
+    while (retries < 30) {
+      const nodeModulesExists = await window.electronAPI.fileExists(`${this.projectPath}/node_modules`);
+      if (nodeModulesExists) break;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      retries++;
+    }
+    
+    // Additional wait to ensure installation completes
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     if (this.context) {
       this.context.addLog({ type: 'success', message: '✅ Dependencies installed successfully' });
@@ -497,6 +527,12 @@ class SetupManager {
 
     if (this.context) {
       this.context.addLog({ type: 'info', message: `🚀 Starting project (npm run ${scriptName})...` });
+    }
+
+    // Verify node_modules exists before starting
+    const nodeModulesExists = await window.electronAPI.fileExists(`${this.projectPath}/node_modules`);
+    if (!nodeModulesExists) {
+      throw new Error('node_modules not found. Please run npm install first.');
     }
 
     // Use app's terminal - spawn command for streaming output

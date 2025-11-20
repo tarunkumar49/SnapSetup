@@ -300,3 +300,36 @@
   color: var(--text-primary);
   font-weight: 500;
 }
+.no-backend {
+  padding: 20px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.backend-section {
+  padding: 12px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.backend-selector {
+  margin-bottom: 12px;
+}
+
+.backend-selector label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.backend-selector select {
+  width: 100%;
+  padding: 6px;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}

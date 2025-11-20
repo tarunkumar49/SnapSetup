@@ -281,6 +281,28 @@ ipcMain.handle('kill-command', (event, idOrPid) => {
   }
 });
 
+ipcMain.handle('kill-all-commands', () => {
+  try {
+    let killed = 0;
+    for (const [id, child] of runningCommands.entries()) {
+      if (process.platform === 'win32') {
+        try {
+          spawn('taskkill', ['/pid', child.pid, '/T', '/F'], { shell: true });
+        } catch (e) {
+          child.kill('SIGKILL');
+        }
+      } else {
+        child.kill('SIGKILL');
+      }
+      runningCommands.delete(id);
+      killed++;
+    }
+    return { success: true, killed };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // File watching
 ipcMain.handle('watch-files', async (event, basePath, patterns = []) => {
   try {

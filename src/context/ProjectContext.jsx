@@ -11,6 +11,9 @@ export function ProjectProvider({ children }) {
   const [projectPath, setProjectPath] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [dependencies, setDependencies] = useState([]);
+  const [backends, setBackends] = useState([]);
+  const [activeBackend, setActiveBackend] = useState(null);
+  const [backendRunner, setBackendRunner] = useState(null);
   const [installProgress, setInstallProgress] = useState({ current: 0, total: 0, percentage: 0 });
   const [logs, setLogs] = useState([]);
   const [setupStatus, setSetupStatus] = useState('idle'); // idle, analyzing, checking, installing, running, completed, error
@@ -124,31 +127,101 @@ export function ProjectProvider({ children }) {
       setProjectPath(path);
       setSetupStatus('analyzing');
       addLog({ type: 'info', message: `Loading project from ${path}` });
+
+      // Detect backends
+      const BackendDetector = (await import('../utils/BackendDetector')).default;
+      const detector = new BackendDetector(path);
+      const detectedBackends = await detector.detectBackends();
+      setBackends(detectedBackends);
+      if (detectedBackends.length > 0) {
+        addLog({ type: 'success', message: `Detected ${detectedBackends.length} backend(s)` });
+      }
       
-      // Read package.json
-      const pkgJsonPath = `${path}/package.json`;
-      const pkgResult = await window.electronAPI.readFile(pkgJsonPath);
+      // Detect language first
+      let langDetection;
+      try {
+        langDetection = await detectProjectLanguage(path);
+      } catch (err) {
+        console.error('Language detection error:', err);
+        langDetection = { lang: 'unknown', manager: null };
+      }
       
-      if (pkgResult.success) {
-        const packageJson = JSON.parse(pkgResult.content);
-        setProject(packageJson);
+      if (langDetection.lang === 'nodejs') {
+        // Node.js project
+        try {
+          const pkgJsonPath = `${path}/package.json`;
+          const pkgResult = await window.electronAPI.readFile(pkgJsonPath);
+          
+          if (pkgResult.success) {
+            const packageJson = JSON.parse(pkgResult.content);
+            setProject(packageJson);
+            
+            const projectAnalysis = await analyzeProject(path, packageJson);
+            setAnalysis(projectAnalysis);
+            
+            const deps = extractDependencies(packageJson);
+            setDependencies(deps);
+            setInstallProgress({ current: 0, total: deps.length, percentage: 0 });
+            
+            addLog({ type: 'success', message: 'Node.js project loaded successfully' });
+            showToast('Project loaded successfully', 'success');
+            setSetupStatus('idle');
+            
+            return { success: true, analysis: projectAnalysis };
+          }
+        } catch (err) {
+          console.error('Error loading Node.js project:', err);
+          addLog({ type: 'warning', message: 'Error parsing package.json, loading as generic project' });
+        }
+      }
+      
+      if (langDetection && langDetection.lang && langDetection.lang !== 'unknown') {
+        // Other language project
+        const projectInfo = {
+          name: path.split(/[\\/]/).pop(),
+          language: langDetection.lang,
+          manager: langDetection.manager,
+          isDocker: langDetection.isDocker || false,
+        };
+        setProject(projectInfo);
         
-        // Analyze project
-        const projectAnalysis = await analyzeProject(path, packageJson);
+        const projectAnalysis = {
+          name: projectInfo.name,
+          type: langDetection.lang,
+          stack: [langDetection.lang, langDetection.manager].filter(Boolean),
+          language: langDetection.lang,
+          manager: langDetection.manager,
+          isDocker: langDetection.isDocker || false,
+        };
         setAnalysis(projectAnalysis);
+        setDependencies([]);
         
-        // Extract dependencies
-        const deps = extractDependencies(packageJson);
-        setDependencies(deps);
-        setInstallProgress({ current: 0, total: deps.length, percentage: 0 });
-        
-        addLog({ type: 'success', message: 'Project loaded successfully' });
-        showToast('Project loaded successfully', 'success');
+        addLog({ type: 'success', message: `${langDetection.lang} project loaded successfully` });
+        showToast(`${langDetection.lang} project detected`, 'success');
         setSetupStatus('idle');
         
         return { success: true, analysis: projectAnalysis };
       } else {
-        throw new Error('package.json not found');
+        // Unknown project
+        const projectInfo = {
+          name: path.split(/[\\/]/).pop(),
+          language: 'Unknown',
+        };
+        setProject(projectInfo);
+        
+        const projectAnalysis = {
+          name: projectInfo.name,
+          type: 'unknown',
+          stack: [],
+        };
+        setAnalysis(projectAnalysis);
+        setDependencies([]);
+        
+        addLog({ type: 'warning', message: 'Could not detect project type' });
+        showToast('Unknown project type', 'warning');
+        setSetupStatus('idle');
+        
+        return { success: true, analysis: projectAnalysis };
       }
     } catch (error) {
       addLog({ type: 'error', message: `Failed to load project: ${error.message}` });
@@ -158,23 +231,65 @@ export function ProjectProvider({ children }) {
     }
   };
 
+  // Detect project language
+  const detectProjectLanguage = async (path) => {
+    try {
+      // Check for Docker first
+      const hasDockerfile = await window.electronAPI.fileExists(`${path}/Dockerfile`);
+      const hasDockerCompose = await window.electronAPI.fileExists(`${path}/docker-compose.yml`);
+      
+      if (hasDockerfile || hasDockerCompose) {
+        return { lang: 'Docker', manager: hasDockerCompose ? 'docker-compose' : 'docker', isDocker: true };
+      }
+
+      const checks = [
+        { file: 'package.json', lang: 'nodejs', manager: 'npm' },
+        { file: 'requirements.txt', lang: 'Python', manager: 'pip' },
+        { file: 'Pipfile', lang: 'Python', manager: 'pipenv' },
+        { file: 'pyproject.toml', lang: 'Python', manager: 'poetry' },
+        { file: 'pom.xml', lang: 'Java', manager: 'maven' },
+        { file: 'build.gradle', lang: 'Java', manager: 'gradle' },
+        { file: 'go.mod', lang: 'Go', manager: 'go' },
+        { file: 'Cargo.toml', lang: 'Rust', manager: 'cargo' },
+        { file: 'composer.json', lang: 'PHP', manager: 'composer' },
+        { file: 'Gemfile', lang: 'Ruby', manager: 'bundler' },
+        { file: 'mix.exs', lang: 'Elixir', manager: 'mix' },
+      ];
+
+      for (const check of checks) {
+        try {
+          const exists = await window.electronAPI.fileExists(`${path}/${check.file}`);
+          if (exists) return check;
+        } catch (err) {
+          console.error(`Error checking ${check.file}:`, err);
+        }
+      }
+    } catch (err) {
+      console.error('Error in detectProjectLanguage:', err);
+    }
+    
+    return { lang: 'unknown', manager: null };
+  };
+
   // Analyze project
   const analyzeProject = async (path, packageJson) => {
     const analysis = {
-      name: packageJson.name || 'Unknown',
+      name: packageJson?.name || 'Unknown',
       type: 'unknown',
       stack: [],
       ports: [],
       hasDockerCompose: false,
       hasEnvExample: false,
       hasEnv: false,
-      scripts: packageJson.scripts || {},
-      nodeVersion: packageJson.engines?.node || null,
+      scripts: packageJson?.scripts || {},
+      nodeVersion: packageJson?.engines?.node || null,
       isMonorepo: false,
       hasBackend: false,
       hasFrontend: false,
       hasDatabase: false,
     };
+
+    if (!packageJson) return analysis;
 
     // Detect project type
     const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
@@ -215,21 +330,25 @@ export function ProjectProvider({ children }) {
     }
 
     // Check for monorepo structure
-    const clientExists = await window.electronAPI.fileExists(`${path}/client/package.json`);
-    const serverExists = await window.electronAPI.fileExists(`${path}/server/package.json`);
-    const frontendExists = await window.electronAPI.fileExists(`${path}/frontend/package.json`);
-    const backendExists = await window.electronAPI.fileExists(`${path}/backend/package.json`);
-    
-    analysis.isMonorepo = clientExists || serverExists || frontendExists || backendExists;
+    try {
+      const clientExists = await window.electronAPI.fileExists(`${path}/client/package.json`);
+      const serverExists = await window.electronAPI.fileExists(`${path}/server/package.json`);
+      const frontendExists = await window.electronAPI.fileExists(`${path}/frontend/package.json`);
+      const backendExists = await window.electronAPI.fileExists(`${path}/backend/package.json`);
+      
+      analysis.isMonorepo = clientExists || serverExists || frontendExists || backendExists;
 
-    // Check for files
-    const dockerComposeExists = await window.electronAPI.fileExists(`${path}/docker-compose.yml`);
-    const envExampleExists = await window.electronAPI.fileExists(`${path}/.env.example`);
-    const envExists = await window.electronAPI.fileExists(`${path}/.env`);
-    
-    analysis.hasDockerCompose = dockerComposeExists;
-    analysis.hasEnvExample = envExampleExists;
-    analysis.hasEnv = envExists;
+      // Check for files
+      const dockerComposeExists = await window.electronAPI.fileExists(`${path}/docker-compose.yml`);
+      const envExampleExists = await window.electronAPI.fileExists(`${path}/.env.example`);
+      const envExists = await window.electronAPI.fileExists(`${path}/.env`);
+      
+      analysis.hasDockerCompose = dockerComposeExists;
+      analysis.hasEnvExample = envExampleExists;
+      analysis.hasEnv = envExists;
+    } catch (err) {
+      console.error('Error checking project structure:', err);
+    }
 
     // Detect ports (common defaults)
     if (analysis.stack.includes('Next.js')) analysis.ports.push(3000);
@@ -246,16 +365,20 @@ export function ProjectProvider({ children }) {
   const extractDependencies = (packageJson) => {
     const deps = [];
     
-    if (packageJson.dependencies) {
-      Object.entries(packageJson.dependencies).forEach(([name, version]) => {
-        deps.push({ name, version, type: 'production', status: 'pending' });
-      });
-    }
-    
-    if (packageJson.devDependencies) {
-      Object.entries(packageJson.devDependencies).forEach(([name, version]) => {
-        deps.push({ name, version, type: 'dev', status: 'pending' });
-      });
+    try {
+      if (packageJson?.dependencies) {
+        Object.entries(packageJson.dependencies).forEach(([name, version]) => {
+          deps.push({ name, version, type: 'production', status: 'pending' });
+        });
+      }
+      
+      if (packageJson?.devDependencies) {
+        Object.entries(packageJson.devDependencies).forEach(([name, version]) => {
+          deps.push({ name, version, type: 'dev', status: 'pending' });
+        });
+      }
+    } catch (err) {
+      console.error('Error extracting dependencies:', err);
     }
     
     return deps;
@@ -328,15 +451,21 @@ export function ProjectProvider({ children }) {
     systemChecks,
     toasts,
     showLogs,
+    backends,
+    activeBackend,
+    backendRunner,
     setProject,
     setProjectPath,
     setAnalysis,
     setDependencies,
     setSetupStatus,
     setRunningServers,
-  setRunningProcessId,
+    setRunningProcessId,
     setSystemChecks,
     setShowLogs,
+    setBackends,
+    setActiveBackend,
+    setBackendRunner,
     loadProject,
     addLog,
     addTerminalOutput,

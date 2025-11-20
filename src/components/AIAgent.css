@@ -179,6 +179,63 @@
   to { transform: rotate(360deg); }
 }
 
+.autonomous-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.autonomous-toggle input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.autonomous-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.memory-stats {
+  padding: 12px;
+  margin-bottom: 12px;
+  background: rgba(0, 150, 255, 0.1);
+  border-left: 3px solid #0096ff;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: #ccc;
+}
+
+.stat-item span:last-child {
+  color: #0096ff;
+  font-weight: 600;
+}
+
+.clear-memory-btn {
+  margin-top: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid rgba(255, 0, 0, 0.4);
+  color: #ff6b6b;
+  border-radius: 3px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.clear-memory-btn:hover {
+  background: rgba(255, 0, 0, 0.3);
+}
+
 .action-button {
   width: 100%;
   margin-bottom: 6px;
@@ -194,6 +251,21 @@
 
 .action-button.warning:hover {
   background-color: var(--warning);
+}
+
+.action-button.danger {
+  background-color: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.action-button.danger:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.action-button.danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .dependency-list {

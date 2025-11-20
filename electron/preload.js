@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   runInTerminal: (command, cwd, shellType) => ipcRenderer.invoke('run-in-terminal', command, cwd, shellType),
   spawnCommand: (command, args, cwd, id) => ipcRenderer.invoke('spawn-command', command, args, cwd, id),
   killCommand: (idOrPid) => ipcRenderer.invoke('kill-command', idOrPid),
+  killAllCommands: () => ipcRenderer.invoke('kill-all-commands'),
   // Event subscriptions
   onFileChanged: (cb) => ipcRenderer.on('file-changed', (e, data) => cb(data)),
   onCommandOutput: (cb) => ipcRenderer.on('command-output', (e, data) => cb(data)),

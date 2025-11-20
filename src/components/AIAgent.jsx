@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useProject } from '../context/ProjectContext';
 import SetupManager from '../utils/SetupManager';
+import MultiLanguageSetupManager from '../utils/MultiLanguageSetupManager';
 import HybridAIAgent from '../utils/HybridAIAgent';
+import AdvancedAutonomousAgent from '../utils/AdvancedAutonomousAgent';
 import './AIAgent.css';
 
 function AIAgent({ mode: propMode }) {
@@ -26,22 +28,28 @@ function AIAgent({ mode: propMode }) {
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [llmStatus, setLlmStatus] = useState(null);
+  const [missingRuntime, setMissingRuntime] = useState(null);
+  const [useAutonomous, setUseAutonomous] = useState(false);
+  const [memoryStats, setMemoryStats] = useState(null);
   const messagesEndRef = useRef(null);
   const setupManager = useRef(null);
   const hybridAgent = useRef(null);
+  const autonomousAgent = useRef(null);
 
   useEffect(() => {
     if (projectPath && !setupManager.current) {
       setupManager.current = new SetupManager(projectPath, projectContext);
     }
     if (!hybridAgent.current) {
-      // Get Groq API key from environment or settings
-      const groqApiKey = import.meta.env.VITE_GROQ_API_KEY || settings?.groqApiKey || '';
-      hybridAgent.current = new HybridAIAgent(projectContext, groqApiKey);
+      hybridAgent.current = new HybridAIAgent(projectContext, '');
       hybridAgent.current.initialize().then(() => {
         const status = hybridAgent.current.getAIStatus();
         setLlmStatus(status);
       });
+    }
+    if (!autonomousAgent.current) {
+      autonomousAgent.current = new AdvancedAutonomousAgent(projectContext);
+      setMemoryStats(autonomousAgent.current.getMemoryStats());
     }
   }, [projectPath, projectContext, settings]);
 
@@ -139,83 +147,179 @@ function AIAgent({ mode: propMode }) {
     if (!setupManager.current) return;
     
     setIsProcessing(true);
-    addAgentMessage('Starting setup process... Let me check your system first.', 'info');
+    addAgentMessage('Starting setup process...', 'info');
     addLog({ type: 'info', message: 'Starting automated setup process' });
     
     try {
-      // Run system checks first
-      addAgentMessage('🔍 Checking system requirements...', 'info');
-      const sysChecks = await setupManager.current.runSystemChecks();
-      setSystemChecks(sysChecks);
-      
-      if (!sysChecks.node) {
-        addAgentMessage(
-          '⚠️ Node.js not found. Please install Node.js from the official site: https://nodejs.org/',
-          'error'
-        );
-        showToast('Node.js not found. Please install it to continue.', 'error');
+      // Use autonomous agent if enabled
+      if (useAutonomous && autonomousAgent.current && analysis) {
+        addAgentMessage('🤖 Using autonomous AI agent...', 'info');
+        const stats = autonomousAgent.current.getMemoryStats();
+        if (stats.totalProjects > 0) {
+          addAgentMessage(`💾 Agent has learned from ${stats.successfulProjects} successful setups`, 'info');
+        }
+        
+        try {
+          await autonomousAgent.current.execute(projectPath, analysis);
+          addAgentMessage('✅ Autonomous setup completed! 🎉', 'success');
+          showToast('Setup completed successfully!', 'success');
+        } catch (err) {
+          if (err.downloadUrl) {
+            setMissingRuntime({ name: err.languageName, url: err.downloadUrl });
+            addAgentMessage(`⚠️ ${err.message}. Click the button below to download it.`, 'error');
+            showToast(`${err.languageName} not found`, 'error');
+          } else {
+            addAgentMessage(`❌ Setup failed: ${err.message}`, 'error');
+            showToast(`Setup failed: ${err.message}`, 'error');
+          }
+        }
+        
         setIsProcessing(false);
         return;
       }
+
+      // Try multi-language setup first
+      const multiLangManager = new MultiLanguageSetupManager(projectPath, projectContext);
+      const detected = await multiLangManager.detectLanguage();
       
-      addAgentMessage(`✅ Node.js detected: ${sysChecks.node}`, 'success');
-      addLog({ type: 'success', message: `Node.js version: ${sysChecks.node}` });
-      
-      // Check .env
-      addAgentMessage('🔐 Checking environment files...', 'info');
-      const envCheck = await setupManager.current.checkEnvFile();
-      if (envCheck && envCheck.created) {
-        addAgentMessage(
-          '✅ .env file created with placeholders. Please review and update with your actual values.',
-          'info'
-        );
-        showToast('.env file created with placeholders', 'warning');
-      }
-      
-      // Show different messages based on project type
-      if (analysis?.type === 'fullstack') {
-        addAgentMessage('🚀 Fullstack project detected! Starting sequential setup...', 'info');
-        addAgentMessage('📦 Step 1: Installing dependencies (check terminal for progress)', 'info');
-        if (analysis.hasDatabase) {
-          addAgentMessage('🐳 Step 2: Starting database containers', 'info');
+      if (detected && detected.isDocker) {
+        // Docker project
+        addAgentMessage(`🐳 Docker setup detected! Using ${detected.manager}`, 'info');
+        addAgentMessage('📦 Building and starting containers... Check terminal for progress', 'info');
+        
+        try {
+          const result = await multiLangManager.runSetup();
+          
+          addAgentMessage('✅ Docker containers are running! 🎉', 'success');
+          showToast('Setup completed successfully!', 'success');
+          addLog({ type: 'success', message: 'Docker setup completed successfully' });
+          setMissingRuntime(null);
+        } catch (err) {
+          if (err.downloadUrl) {
+            setMissingRuntime({ name: err.languageName, url: err.downloadUrl });
+            addAgentMessage(`⚠️ ${err.message}. Click the button below to download it.`, 'error');
+            showToast(`${err.languageName} not found`, 'error');
+          }
+          throw err;
         }
-        addAgentMessage('🔧 Step 3: Starting backend server', 'info');
-        addAgentMessage('⚙️ Step 4: Starting frontend dev server', 'info');
+      } else if (detected && detected.lang !== 'nodejs' && detected.lang !== 'unknown') {
+        // Non-Node.js project
+        addAgentMessage(`🔍 Detected ${detected.lang} project using ${detected.manager}`, 'info');
+        addAgentMessage('📦 Installing dependencies... Check terminal for progress', 'info');
+        
+        try {
+          const result = await multiLangManager.runSetup();
+          
+          addAgentMessage('✅ Setup completed successfully! 🎉', 'success');
+          showToast('Setup completed successfully!', 'success');
+          addLog({ type: 'success', message: 'Setup completed successfully' });
+          setMissingRuntime(null);
+        } catch (err) {
+          if (err.downloadUrl) {
+            setMissingRuntime({ name: err.languageName, url: err.downloadUrl });
+            addAgentMessage(`⚠️ ${err.message}. Click the button below to download it.`, 'error');
+            showToast(`${err.languageName} not found`, 'error');
+          }
+          throw err;
+        }
+      } else if (!detected || detected.lang === 'unknown') {
+        addAgentMessage('⚠️ Could not detect project type. Please check if the project has valid config files.', 'error');
+        showToast('Unknown project type', 'error');
+        setIsProcessing(false);
+        return;
       } else {
-        addAgentMessage(`📦 Installing dependencies... Check the terminal below for real-time progress.`, 'info');
+        // Node.js project - use existing logic
+        addAgentMessage('🔍 Checking system requirements...', 'info');
+        const sysChecks = await setupManager.current.runSystemChecks();
+        setSystemChecks(sysChecks);
+        
+        if (!sysChecks.node) {
+          addAgentMessage(
+            '⚠️ Node.js not found. Please install Node.js from the official site: https://nodejs.org/',
+            'error'
+          );
+          showToast('Node.js not found. Please install it to continue.', 'error');
+          setIsProcessing(false);
+          return;
+        }
+        
+        addAgentMessage(`✅ Node.js detected: ${sysChecks.node}`, 'success');
+        addLog({ type: 'success', message: `Node.js version: ${sysChecks.node}` });
+        
+        addAgentMessage('🔐 Checking environment files...', 'info');
+        const envCheck = await setupManager.current.checkEnvFile();
+        if (envCheck && envCheck.created) {
+          addAgentMessage(
+            '✅ .env file created with placeholders. Please review and update with your actual values.',
+            'info'
+          );
+          showToast('.env file created with placeholders', 'warning');
+        }
+        
+        if (analysis?.type === 'fullstack') {
+          addAgentMessage('🚀 Fullstack project detected! Starting sequential setup...', 'info');
+          addAgentMessage('📦 Step 1: Installing dependencies (check terminal for progress)', 'info');
+          if (analysis.hasDatabase) {
+            addAgentMessage('🐳 Step 2: Starting database containers', 'info');
+          }
+          addAgentMessage('🔧 Step 3: Starting backend server', 'info');
+          addAgentMessage('⚙️ Step 4: Starting frontend dev server', 'info');
+        } else {
+          addAgentMessage(`📦 Installing dependencies... Check the terminal below for real-time progress.`, 'info');
+        }
+        
+        addLog({ type: 'info', message: 'Starting setup process...' });
+        const setupResult = await setupManager.current.runFullSetup();
+        addLog({ type: 'info', message: `Setup result: ${JSON.stringify(setupResult)}` });
+        
+        addAgentMessage('✅ Setup completed successfully! 🎉', 'success');
+        if (runningServers.frontend || runningServers.backend) {
+          addAgentMessage('Your servers are running! Check the footer for URLs.', 'success');
+        }
+        showToast('Setup completed successfully!', 'success');
+        addLog({ type: 'success', message: 'Setup completed successfully' });
       }
-      
-      addLog({ type: 'info', message: 'Starting setup process...' });
-      const setupResult = await setupManager.current.runFullSetup();
-      addLog({ type: 'info', message: `Setup result: ${JSON.stringify(setupResult)}` });
-      
-      addAgentMessage('✅ Setup completed successfully! 🎉', 'success');
-      if (runningServers.frontend || runningServers.backend) {
-        addAgentMessage('Your servers are running! Check the footer for URLs.', 'success');
-      }
-      showToast('Setup completed successfully!', 'success');
-      addLog({ type: 'success', message: 'Setup completed successfully' });
     } catch (error) {
-      addAgentMessage(`❌ Setup failed: ${error.message}`, 'error');
-      addLog({ type: 'error', message: `Setup failed: ${error.message}` });
-      showToast(`Setup failed: ${error.message}`, 'error');
+      const errorMsg = error.message || String(error);
+      
+      if (errorMsg.includes('dockerDesktopLinuxEngine') || errorMsg.includes('Docker Desktop is not running')) {
+        addAgentMessage('⚠️ Docker Desktop is not running. Please start Docker Desktop and try again.', 'error');
+        showToast('Docker Desktop is not running', 'error');
+      } else {
+        addAgentMessage(`❌ Setup failed: ${errorMsg}`, 'error');
+        showToast(`Setup failed: ${errorMsg}`, 'error');
+      }
+      
+      addLog({ type: 'error', message: `Setup failed: ${errorMsg}` });
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleRetry = async () => {
-    showToast('Retrying failed installations...', 'info');
-    if (!setupManager.current) return;
+  const handleStopSetup = async () => {
     try {
-      const result = await setupManager.current.installDependenciesWithProgress();
-      if (result && result.failed === 0) {
-        showToast('Retry completed', 'success');
-      } else {
-        showToast(`Retry completed with ${result.failed} failures`, 'warning');
+      // Kill all running commands
+      if (window.electronAPI && window.electronAPI.killAllCommands) {
+        const result = await window.electronAPI.killAllCommands();
+        if (result.success) {
+          addAgentMessage(`⏹️ Stopped ${result.killed} process(es)`, 'info');
+          showToast('All processes stopped', 'success');
+        }
       }
+      
+      // Stop backend runner if active
+      if (backendRunner) {
+        await backendRunner.stop();
+      }
+      
+      // Reset status
+      setSetupStatus('idle');
+      setRunningServers({ frontend: null, backend: null });
+      setIsProcessing(false);
+      
+      addLog({ type: 'info', message: 'Setup stopped by user' });
     } catch (err) {
-      showToast(`Retry failed: ${err.message}`, 'error');
+      showToast(`Failed to stop: ${err.message}`, 'error');
     }
   };
 
@@ -287,8 +391,8 @@ function AIAgent({ mode: propMode }) {
         case 'start_setup':
           await handleStartSetup();
           break;
-        case 'retry':
-          await handleRetry();
+        case 'stop':
+          await handleStopSetup();
           break;
         case 'generate_docker':
           await handleGenerateDockerCompose();
@@ -356,6 +460,43 @@ function AIAgent({ mode: propMode }) {
 
         <div className="action-section">
           <h4>Actions</h4>
+          
+          <label className="autonomous-toggle">
+            <input
+              type="checkbox"
+              checked={useAutonomous}
+              onChange={(e) => setUseAutonomous(e.target.checked)}
+            />
+            <span>🤖 Use Autonomous Agent (learns from mistakes)</span>
+          </label>
+
+          {useAutonomous && memoryStats && (
+            <div className="memory-stats">
+              <div className="stat-item">
+                <span>💾 Learned from:</span>
+                <span>{memoryStats.successfulProjects}/{memoryStats.totalProjects} projects</span>
+              </div>
+              <div className="stat-item">
+                <span>💡 Known solutions:</span>
+                <span>{memoryStats.knownSolutions}</span>
+              </div>
+              {memoryStats.totalProjects > 0 && (
+                <button
+                  onClick={() => {
+                    if (autonomousAgent.current) {
+                      autonomousAgent.current.clearMemory();
+                      setMemoryStats(autonomousAgent.current.getMemoryStats());
+                      showToast('Agent memory cleared', 'info');
+                    }
+                  }}
+                  className="clear-memory-btn"
+                >
+                  Clear Memory
+                </button>
+              )}
+            </div>
+          )}
+
           <button
             onClick={handleStartSetup}
             disabled={isProcessing || setupStatus === 'installing' || setupStatus === 'running'}
@@ -363,16 +504,16 @@ function AIAgent({ mode: propMode }) {
           >
             {setupStatus === 'installing' && 'Installing...'}
             {setupStatus === 'running' && 'Running...'}
-            {(setupStatus === 'idle' || setupStatus === 'completed') && 'Start Auto Setup'}
+            {(setupStatus === 'idle' || setupStatus === 'completed') && (useAutonomous ? '🤖 Start Autonomous Setup' : 'Start Auto Setup')}
             {setupStatus === 'error' && 'Retry Setup'}
           </button>
           
           <button
-            onClick={handleRetry}
-            disabled={isProcessing}
-            className="action-button"
+            onClick={handleStopSetup}
+            disabled={setupStatus === 'idle' || setupStatus === 'completed'}
+            className="action-button danger"
           >
-            Retry Failed
+            ⏹️ Stop Setup
           </button>
 
           {analysis?.hasDockerCompose === false && (
@@ -391,6 +532,15 @@ function AIAgent({ mode: propMode }) {
               className="action-button warning"
             >
               ⚠️ Install Node.js
+            </button>
+          )}
+
+          {missingRuntime && (
+            <button
+              onClick={() => window.electronAPI.openExternal(missingRuntime.url)}
+              className="action-button warning"
+            >
+              ⚠️ Install {missingRuntime.name}
             </button>
           )}
         </div>

@@ -1,6 +1,17 @@
 # SnapSetup
 
-A powerful desktop application built with Electron, React, and Node.js that automates JavaScript codebase setup with AI-powered assistance.
+A powerful desktop application built with Electron, React, and Node.js that automates codebase setup for multiple programming languages with AI-powered assistance.
+
+## Supported Languages
+
+- **Node.js** (npm)
+- **Python** (pip, pipenv, poetry)
+- **Java** (Maven, Gradle)
+- **Go** (go modules)
+- **Rust** (Cargo)
+- **PHP** (Composer)
+- **Ruby** (Bundler)
+- **Elixir** (Mix)
 
 ## Features
 
@@ -12,15 +23,14 @@ A powerful desktop application built with Electron, React, and Node.js that auto
 - **Auto-retry Logic**: Automatically retries failed installations with exponential backoff
 - **Smart Sequencing**: Starts database → backend → frontend in the correct order
 
-### 🤖 Hybrid AI Agent
-- **Rule-Based Intelligence**: Instant responses for common queries (no API needed)
-- **Optional Local LLM**: Add Ollama for advanced AI features (free, runs locally)
+### 🤖 AI Agent
+- **Rule-Based Intelligence**: Instant responses for common queries
 - **Conversational Interface**: Chat naturally about your setup
 - **Action Panel**: Quick access to common actions and setup status
-- **Smart Detection**: Detects missing requirements (Node.js, Docker, .env files)
+- **Smart Detection**: Detects missing requirements (runtimes, package managers, .env files)
 - **Error Diagnosis**: Automatically identifies and suggests fixes for common errors
 - **Guided Setup**: Step-by-step guidance through the setup process
-- **100% Free**: No API keys or costs required
+- **100% Free**: No API keys required - works completely offline
 
 ### 🔧 System Checks
 - Node.js and npm version detection
@@ -154,10 +164,28 @@ Security notes:
 
 ## Requirements
 
-- **Node.js**: v16 or higher
+### For Running SnapSetup
+- **Node.js**: v16 or higher (to run the app itself)
 - **npm**: v8 or higher
 - **Operating System**: Windows, macOS, or Linux
-- **Optional**: Docker Desktop (for Docker Compose features)
+
+### For Project Setup (Auto-detected)
+The app will detect your project language and prompt you to install:
+- **Node.js** - https://nodejs.org/
+- **Python** - https://www.python.org/downloads/
+- **Java JDK** - https://www.oracle.com/java/technologies/downloads/
+- **Go** - https://go.dev/dl/
+- **Rust** - https://www.rust-lang.org/tools/install
+- **PHP** - https://www.php.net/downloads
+- **Ruby** - https://www.ruby-lang.org/en/downloads/
+- **Elixir** - https://elixir-lang.org/install.html
+- **Maven** - https://maven.apache.org/download.cgi
+- **Gradle** - https://gradle.org/install/
+- **Composer** - https://getcomposer.org/download/
+- **Bundler** - https://bundler.io/
+
+### Optional
+- **Docker Desktop** (for Docker Compose features)
 
 ## Development
 

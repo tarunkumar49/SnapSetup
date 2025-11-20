@@ -47,61 +47,34 @@ function EditorArea() {
   const createD2Workflow = () => {
     if (!analysis) return '';
 
-    const type = analysis.type;
-    const stack = analysis.stack.join(', ');
+    const type = analysis.type || 'Project';
+    const stack = (analysis.stack || []).join(', ');
     const hasDocker = analysis.hasDockerCompose;
-    const hasDB = analysis.stack.some(tech => 
+    const hasDB = (analysis.stack || []).some(tech => 
       ['MongoDB', 'PostgreSQL', 'MySQL', 'SQLite'].includes(tech)
     );
-    const dbName = analysis.stack.find(tech => 
+    const dbName = (analysis.stack || []).find(tech => 
       ['MongoDB', 'PostgreSQL', 'MySQL', 'SQLite'].includes(tech)
     ) || 'Database';
 
-    let d2 = `${project.name}: {
-  shape: rectangle
-  style: {
-    fill: "#007ACC"
-    stroke: "#007ACC"
-    font-color: "#ffffff"
-  }
-}
-
-${type}: {
-  shape: rectangle
-  style: {
-    fill: "#000000"
-    stroke: "#007ACC"
-    font-color: "#ffffff"
-  }
-}
-
-${project.name} -> ${type}
-${type} -> "${stack}"
-"${stack}" -> "Install ${analysis.dependencies?.length || 0} Packages"
-"Install ${analysis.dependencies?.length || 0} Packages" -> "Setup .env"`;
+    let d2 = project.name + ': {\n  shape: rectangle\n  style: {\n    fill: "#007ACC"\n    stroke: "#007ACC"\n    font-color: "#ffffff"\n  }\n}\n\n' + type + ': {\n  shape: rectangle\n  style: {\n    fill: "#000000"\n    stroke: "#007ACC"\n    font-color: "#ffffff"\n  }\n}\n\n' + project.name + ' -> ' + type + '\n' + type + ' -> "' + stack + '"\n"' + stack + '" -> "Install Packages"\n"Install Packages" -> "Setup .env"';
 
     if (hasDB) {
-      d2 += `\n"Setup .env" -> "${dbName}"`;
+      d2 += '\n"Setup .env" -> "' + dbName + '"';
       if (hasDocker) {
-        d2 += `\n"${dbName}" -> "Docker Compose"\n"Docker Compose" -> "Start Dev Server"`;
+        d2 += '\n"' + dbName + '" -> "Docker Compose"\n"Docker Compose" -> "Start Dev Server"';
       } else {
-        d2 += `\n"${dbName}" -> "Start Dev Server"`;
+        d2 += '\n"' + dbName + '" -> "Start Dev Server"';
       }
     } else {
       if (hasDocker) {
-        d2 += `\n"Setup .env" -> "Docker Compose"\n"Docker Compose" -> "Start Dev Server"`;
+        d2 += '\n"Setup .env" -> "Docker Compose"\n"Docker Compose" -> "Start Dev Server"';
       } else {
-        d2 += `\n"Setup .env" -> "Start Dev Server"`;
+        d2 += '\n"Setup .env" -> "Start Dev Server"';
       }
     }
 
-    d2 += `\n"Start Dev Server" -> Ready: {
-  style: {
-    fill: "#4ade80"
-    stroke: "#4ade80"
-    font-color: "#000000"
-  }
-}`;
+    d2 += '\n"Start Dev Server" -> Ready: {\n  style: {\n    fill: "#4ade80"\n    stroke: "#4ade80"\n    font-color: "#000000"\n  }\n}';
 
     return d2;
   };
@@ -110,17 +83,17 @@ ${type} -> "${stack}"
     if (!analysis) return '';
 
     const steps = [];
-    steps.push(project.name);
-    steps.push(analysis.type);
-    steps.push(analysis.stack.join(', '));
-    steps.push(`Install ${analysis.dependencies?.length || 0} Packages`);
+    steps.push(project.name || 'Project');
+    steps.push(analysis.type || 'Unknown');
+    steps.push((analysis.stack || []).join(', '));
+    steps.push('Install Packages');
     steps.push('Setup .env');
     
-    const hasDB = analysis.stack.some(tech => 
+    const hasDB = (analysis.stack || []).some(tech => 
       ['MongoDB', 'PostgreSQL', 'MySQL', 'SQLite'].includes(tech)
     );
     if (hasDB) {
-      const dbName = analysis.stack.find(tech => 
+      const dbName = (analysis.stack || []).find(tech => 
         ['MongoDB', 'PostgreSQL', 'MySQL', 'SQLite'].includes(tech)
       );
       steps.push(dbName);
@@ -210,11 +183,11 @@ ${type} -> "${stack}"
             <div className="detail-section">
               <h3>Detected Configuration</h3>
               <ul>
-                <li><strong>Type:</strong> {analysis.type}</li>
-                <li><strong>Stack:</strong> {analysis.stack.join(', ')}</li>
-                <li><strong>Package Manager:</strong> {analysis.packageManager || 'npm'}</li>
-                {analysis.ports.length > 0 && (
-                  <li><strong>Ports:</strong> {analysis.ports.join(', ')}</li>
+                <li><strong>Type:</strong> {analysis.type || 'Unknown'}</li>
+                <li><strong>Stack:</strong> {(analysis.stack || []).join(', ') || 'None'}</li>
+                <li><strong>Package Manager:</strong> {analysis.packageManager || analysis.manager || 'npm'}</li>
+                {(analysis.ports || []).length > 0 && (
+                  <li><strong>Ports:</strong> {(analysis.ports || []).join(', ')}</li>
                 )}
               </ul>
             </div>
@@ -222,7 +195,7 @@ ${type} -> "${stack}"
             <div className="detail-section">
               <h3>Setup Steps</h3>
               <ol>
-                <li>Install dependencies ({analysis.dependencies?.length || 0} packages)</li>
+                <li>Install dependencies</li>
                 <li>Configure environment variables</li>
                 {analysis.hasDockerCompose && <li>Setup Docker containers</li>}
                 <li>Start development servers</li>
